@@ -229,8 +229,8 @@ export default function GameTable({ socket, myId, roomId, gameState, trickWon, s
                     <td>{ps.name}</td>
                     <td>{ps.bid}</td>
                     <td>{ps.tricks}</td>
-                    <td className={ps.delta >= 0 ? 'delta-pos' : 'delta-neg'}>
-                      {ps.delta >= 0 ? '+' : ''}{ps.delta}
+                    <td className={ps.delta > 0 ? 'delta-pos' : 'delta-zero'}>
+                      {ps.bid === ps.tricks ? `+${ps.delta}` : '0'}
                     </td>
                     <td>{ps.total}</td>
                   </tr>

@@ -1,5 +1,6 @@
 const express = require('express');
 const http = require('http');
+const path = require('path');
 const { Server } = require('socket.io');
 const cors = require('cors');
 const { v4: uuidv4 } = require('uuid');
@@ -8,12 +9,21 @@ const {
 } = require('./gameEngine');
 
 const app = express();
-app.use(cors());
+const ALLOWED_ORIGINS = process.env.ALLOWED_ORIGINS
+  ? process.env.ALLOWED_ORIGINS.split(',')
+  : ['http://localhost:3000'];
+
+app.use(cors({ origin: ALLOWED_ORIGINS }));
 app.use(express.json());
 
+// ─── Serve React build ────────────────────────────────────────────────────────
+const BUILD_DIR = path.join(__dirname, 'public');
+app.use(express.static(BUILD_DIR));
+
 const server = http.createServer(app);
+
 const io = new Server(server, {
-  cors: { origin: '*', methods: ['GET', 'POST'] }
+  cors: { origin: ALLOWED_ORIGINS, methods: ['GET', 'POST'] }
 });
 
 // ─── In-memory state ─────────────────────────────────────────────────────────
@@ -274,6 +284,11 @@ app.get('/room/:id', (req, res) => {
   const room = rooms[req.params.id];
   if (!room) return res.status(404).json({ error: 'Not found' });
   res.json({ id: room.id, players: room.players.length, state: room.state });
+});
+
+// ─── Catch-all: serve React for any non-API route ─────────────────────────────
+app.get('*', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
 const PORT = process.env.PORT || 3001;

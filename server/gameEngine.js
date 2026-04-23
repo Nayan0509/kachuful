@@ -60,8 +60,8 @@ function determineTrickWinner(trick, trumpSuit, leadSuit) {
 }
 
 function calcScore(bid, tricks) {
-  if (bid === tricks) return bid === 0 ? 5 : 10 + bid * 2;
-  return -Math.abs(bid - tricks) * 2;
+  if (bid === tricks) return 10 + tricks; // correct: 10 + tricks won (bid 0 = 10, bid 3 = 13)
+  return 0;                               // wrong prediction: 0 points
 }
 
 module.exports = {

@@ -286,8 +286,8 @@
 }
 .round-score-table td { padding: 8px 8px; font-size: 14px; border-bottom: 1px solid rgba(255,255,255,.05); }
 .round-score-table tr.me td { color: var(--gold); }
-.delta-pos { color: #4caf50; font-weight: 700; }
-.delta-neg { color: #e03030; font-weight: 700; }
+.delta-pos  { color: #4caf50; font-weight: 700; }
+.delta-zero { color: rgba(255,255,255,.35); font-weight: 700; }
 .round-end-panel .btn { width: 100%; }
 
 @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }

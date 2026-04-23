@@ -1,0 +1,3 @@
+[deploy]
+startCommand = "npm install --prefix server && node server/index.js"
+restartPolicyType = "ON_FAILURE"

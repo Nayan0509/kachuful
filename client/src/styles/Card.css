@@ -1,0 +1,98 @@
+:root {
+  --cw: 72px;
+  --ch: 100px;
+}
+
+.card {
+  width: var(--cw);
+  height: var(--ch);
+  background: #fff;
+  border-radius: 8px;
+  border: 1.5px solid #ddd;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 3px 10px rgba(0,0,0,.35);
+  transition: transform .18s cubic-bezier(.34,1.56,.64,1), box-shadow .18s;
+  flex-shrink: 0;
+}
+
+.card.small { --cw: 52px; --ch: 72px; font-size: 11px; }
+
+.card.clickable { cursor: pointer; }
+.card.clickable:hover {
+  transform: translateY(-14px) scale(1.06);
+  box-shadow: 0 12px 28px rgba(0,0,0,.5);
+  z-index: 10;
+}
+
+.card.selected {
+  transform: translateY(-20px) scale(1.08);
+  box-shadow: 0 0 0 3px #f0c040, 0 14px 32px rgba(240,192,64,.4);
+  z-index: 11;
+}
+
+.card.disabled { opacity: .45; cursor: not-allowed; }
+.card.disabled:hover { transform: none; }
+
+.card.glow {
+  box-shadow: 0 0 0 3px #f0c040, 0 0 20px rgba(240,192,64,.6);
+  animation: cardGlow 1s infinite alternate;
+}
+@keyframes cardGlow {
+  from { box-shadow: 0 0 0 2px #f0c040, 0 0 12px rgba(240,192,64,.4); }
+  to   { box-shadow: 0 0 0 3px #f0c040, 0 0 28px rgba(240,192,64,.7); }
+}
+
+/* Corners */
+.card-corner {
+  position: absolute;
+  display: flex; flex-direction: column; align-items: center;
+  line-height: 1;
+  font-weight: 700;
+}
+.card-corner.top-left { top: 5px; left: 6px; }
+.card-corner.bottom-right { bottom: 5px; right: 6px; transform: rotate(180deg); }
+
+.card-rank { font-size: 13px; font-weight: 800; }
+.card-suit  { font-size: 11px; }
+
+.card.red  .card-rank,
+.card.red  .card-suit,
+.card.red  .card-center { color: #d42020; }
+
+.card.black .card-rank,
+.card.black .card-suit,
+.card.black .card-center { color: #1a1a1a; }
+
+.card-center { font-size: 26px; }
+.card.small .card-center { font-size: 18px; }
+
+/* Face down */
+.card-back {
+  width: 100%; height: 100%;
+  border-radius: 7px;
+  background: linear-gradient(135deg, #1a3a6b, #0d2244);
+  display: flex; align-items: center; justify-content: center;
+  overflow: hidden;
+}
+.card-back-pattern {
+  width: 85%; height: 85%;
+  border: 2px solid rgba(240,192,64,.4);
+  border-radius: 4px;
+  background: repeating-linear-gradient(
+    45deg,
+    rgba(240,192,64,.08) 0px,
+    rgba(240,192,64,.08) 2px,
+    transparent 2px,
+    transparent 8px
+  );
+}
+
+/* Deal animation */
+@keyframes dealCard {
+  from { opacity: 0; transform: translateY(-60px) rotate(-8deg) scale(.8); }
+  to   { opacity: 1; transform: translateY(0) rotate(0) scale(1); }
+}
+.card.deal { animation: dealCard .4s cubic-bezier(.34,1.56,.64,1) both; }

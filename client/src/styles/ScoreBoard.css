@@ -1,0 +1,51 @@
+.scoreboard {
+  position: relative; z-index: 1;
+  display: flex; align-items: center; justify-content: center;
+  height: 100vh;
+  animation: fadeIn .5s ease;
+}
+.scoreboard-card {
+  background: rgba(10,22,40,.92);
+  border: 1px solid rgba(240,192,64,.3);
+  border-radius: 20px;
+  padding: 40px 44px;
+  min-width: 480px;
+  max-width: 95vw;
+  box-shadow: 0 8px 48px rgba(0,0,0,.7);
+  backdrop-filter: blur(12px);
+}
+.scoreboard-card h1 {
+  font-family: 'Cinzel', serif;
+  font-size: 32px; color: var(--gold);
+  text-align: center; margin-bottom: 6px;
+}
+.scoreboard-card .subtitle {
+  text-align: center; color: rgba(255,255,255,.4);
+  font-size: 13px; margin-bottom: 28px;
+}
+.winner-banner {
+  text-align: center;
+  font-size: 18px;
+  margin-bottom: 24px;
+  padding: 14px;
+  background: rgba(240,192,64,.1);
+  border: 1px solid rgba(240,192,64,.3);
+  border-radius: 12px;
+  animation: popIn .4s cubic-bezier(.34,1.56,.64,1);
+}
+.winner-banner .trophy { font-size: 32px; display: block; margin-bottom: 4px; }
+.winner-banner .wname { color: var(--gold); font-weight: 700; font-size: 22px; }
+
+.final-table { width: 100%; border-collapse: collapse; margin-bottom: 28px; }
+.final-table th {
+  font-size: 11px; text-transform: uppercase; letter-spacing: 1px;
+  color: rgba(255,255,255,.4); padding: 8px; text-align: left;
+  border-bottom: 1px solid rgba(255,255,255,.12);
+}
+.final-table td { padding: 10px 8px; font-size: 15px; border-bottom: 1px solid rgba(255,255,255,.06); }
+.final-table tr.me td { color: var(--gold); }
+.final-table .rank { font-weight: 700; color: rgba(255,255,255,.5); }
+.final-table .rank.first { color: var(--gold); font-size: 18px; }
+.final-table .total { font-weight: 700; font-size: 17px; }
+
+.scoreboard-card .btn { width: 100%; font-size: 16px; padding: 14px; }

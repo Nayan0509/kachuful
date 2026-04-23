@@ -141,6 +141,10 @@
   display: flex; align-items: center; gap: 16px;
 }
 .my-bid-info { color: var(--gold); font-weight: 600; }
+.waiting-bid-info { color: rgba(255,255,255,.45); font-style: italic; }
+.your-turn-info { color: #4caf50; font-weight: 600; animation: pulse 1s infinite; }
+.turn-tag { font-size: 13px; }
+.opponent-bid-badge.pending { color: rgba(255,255,255,.4); border-color: rgba(255,255,255,.15); background: transparent; font-style: italic; }
 .hand-cards {
   display: flex;
   gap: 0;

@@ -9,7 +9,10 @@ export default function GameTable({ socket, myId, roomId, gameState, trickWon, s
   const chatRef = useRef(null);
 
   const myHand = gameState.myHand || [];
-  const isMyTurn = gameState.currentPlayer === myId;
+  const isBidding = gameState.state === 'bidding';
+  const isPlaying = gameState.state === 'playing';
+  const isMyPlayTurn = isPlaying && gameState.currentPlayer === myId;
+  const isMyBidTurn = isBidding && gameState.currentPlayer === myId && myBid === undefined;
   const myBid = gameState.bids[myId];
   const myTricks = gameState.tricks[myId] || 0;
   const me = gameState.players.find(p => p.id === myId);
@@ -20,7 +23,7 @@ export default function GameTable({ socket, myId, roomId, gameState, trickWon, s
   }, [gameState.chat]);
 
   const handlePlayCard = (card) => {
-    if (!isMyTurn) return showToast('Not your turn', 'error');
+    if (!isMyPlayTurn) return showToast('Not your turn', 'error');
     socket.emit('playCard', { roomId, card });
     setSelectedCard(null);
   };
@@ -90,15 +93,22 @@ export default function GameTable({ socket, myId, roomId, gameState, trickWon, s
             const oppBid = gameState.bids[opp.id];
             const oppTricks = gameState.tricks[opp.id] || 0;
             const isActive = gameState.currentPlayer === opp.id;
+            const isBiddingNow = isBidding && isActive;
+            const isPlayingNow = isPlaying && isActive;
             return (
               <div key={opp.id} className="opponent-seat" style={pos}>
                 <div className={`opponent-name ${isActive ? 'active-player' : ''}`}>
                   {opp.name}
+                  {isBiddingNow && <span className="turn-tag"> 🤔</span>}
+                  {isPlayingNow && <span className="turn-tag"> 🃏</span>}
                 </div>
                 {oppBid !== undefined && (
                   <div className="opponent-bid-badge">
                     {oppBid} / {oppTricks}
                   </div>
+                )}
+                {isBidding && oppBid === undefined && (
+                  <div className="opponent-bid-badge pending">bidding...</div>
                 )}
                 <div className="opponent-cards">
                   {Array.from({ length: myHand.length }).map((_, ci) => (
@@ -134,10 +144,17 @@ export default function GameTable({ socket, myId, roomId, gameState, trickWon, s
       <div className="gt-hand">
         <div className="hand-label">
           <span>Your Hand</span>
-          {myBid !== undefined && (
-            <span className="my-bid-info">
-              Bid: {myBid} · Tricks: {myTricks}
-            </span>
+          {isBidding && myBid === undefined && !isMyBidTurn && (
+            <span className="waiting-bid-info">⏳ Waiting to place bid...</span>
+          )}
+          {isBidding && myBid !== undefined && (
+            <span className="my-bid-info">Your bid: {myBid}</span>
+          )}
+          {isPlaying && myBid !== undefined && (
+            <span className="my-bid-info">Bid: {myBid} · Tricks: {myTricks}</span>
+          )}
+          {isMyPlayTurn && (
+            <span className="your-turn-info">👆 Your turn to play!</span>
           )}
         </div>
         <div className="hand-cards">
@@ -145,10 +162,11 @@ export default function GameTable({ socket, myId, roomId, gameState, trickWon, s
             <Card
               key={`${card.suit}-${card.rank}`}
               card={card}
-              onClick={() => handlePlayCard(card)}
-              disabled={!isMyTurn}
+              onClick={isMyPlayTurn ? () => handlePlayCard(card) : undefined}
+              disabled={!isMyPlayTurn}
               selected={selectedCard === card}
-              glow={isMyTurn}
+              glow={isMyPlayTurn}
+              style={{ animationDelay: `${i * 0.06}s` }}
             />
           ))}
         </div>
@@ -199,8 +217,8 @@ export default function GameTable({ socket, myId, roomId, gameState, trickWon, s
         </div>
       </div>
 
-      {/* Bid panel */}
-      {gameState.state === 'bidding' && gameState.currentPlayer === myId && myBid === undefined && (
+      {/* Bid panel — only when it's YOUR turn to bid */}
+      {isMyBidTurn && (
         <BidPanel
           roundNumber={gameState.round}
           trumpCard={gameState.trumpCard}

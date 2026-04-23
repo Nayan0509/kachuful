@@ -9,7 +9,6 @@
     }
   },
   "rewrites": [
-    { "source": "/api/socket/(.*)", "destination": "/api/socket" },
-    { "source": "/(.*)",            "destination": "/index.html" }
+    { "source": "/(.*)", "destination": "/index.html" }
   ]
 }

@@ -23,6 +23,7 @@ app.use(express.static(BUILD_DIR));
 const server = http.createServer(app);
 
 const io = new Server(server, {
+  path: '/api/socket',
   cors: { origin: ALLOWED_ORIGINS, methods: ['GET', 'POST'] }
 });
 

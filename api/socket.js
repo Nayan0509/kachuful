@@ -1,97 +1,104 @@
-// Vercel Serverless + Socket.io
 const { Server } = require('socket.io');
 const { v4: uuidv4 } = require('uuid');
-const {
-  maxRound, dealRound, determineTrickWinner, calcScore
-} = require('./_gameEngine');
+const { maxRound, dealRound, determineTrickWinner, calcScore } = require('./_gameEngine');
 
-let io;
 const rooms = {};
 
-function initIO(res) {
-  if (io) return io;
-  io = new Server({ addTrailingSlash: false, path: '/api/socket' });
-  io.attach(res.socket?.server);
+const ioHandler = (req, res) => {
+  if (!res.socket.server.io) {
+    console.log('Initialising Socket.io');
 
-  io.on('connection', (socket) => {
-    socket.on('createRoom', ({ name }) => {
-      const roomId = Math.random().toString(36).substring(2, 8).toUpperCase();
-      rooms[roomId] = {
-        id: roomId, host: socket.id,
-        players: [{ id: socket.id, name, score: 0, connected: true }],
-        state: 'lobby', round: 0, maxRounds: 0,
-        hands: {}, trumpCard: null, trumpSuit: null,
-        bids: {}, tricks: {}, currentTrick: [],
-        leadSuit: null, currentPlayer: null,
-        dealerIndex: 0, scores: [], chat: []
-      };
-      socket.join(roomId);
-      socket.join(socket.id);
-      socket.emit('roomCreated', { roomId });
-      broadcast(roomId);
+    const io = new Server(res.socket.server, {
+      path: '/api/socket',
+      addTrailingSlash: false,
+      cors: { origin: '*', methods: ['GET', 'POST'] },
+      transports: ['polling'],   // Vercel only supports polling, not websocket upgrade
     });
 
-    socket.on('joinRoom', ({ roomId, name }) => {
-      const room = rooms[roomId];
-      if (!room) return socket.emit('error', { message: 'Room not found' });
-      if (room.state !== 'lobby') return socket.emit('error', { message: 'Game already started' });
-      if (room.players.length >= 7) return socket.emit('error', { message: 'Room full' });
-      if (room.players.find(p => p.id === socket.id)) return;
-      room.players.push({ id: socket.id, name, score: 0, connected: true });
-      socket.join(roomId);
-      socket.join(socket.id);
-      socket.emit('roomJoined', { roomId });
-      broadcast(roomId);
+    res.socket.server.io = io;
+
+    io.on('connection', (socket) => {
+      console.log('connected', socket.id);
+
+      socket.on('createRoom', ({ name }) => {
+        const roomId = Math.random().toString(36).substring(2, 8).toUpperCase();
+        rooms[roomId] = {
+          id: roomId, host: socket.id,
+          players: [{ id: socket.id, name, score: 0, connected: true }],
+          state: 'lobby', round: 0, maxRounds: 0,
+          hands: {}, trumpCard: null, trumpSuit: null,
+          bids: {}, tricks: {}, currentTrick: [],
+          leadSuit: null, currentPlayer: null,
+          dealerIndex: 0, scores: [], chat: []
+        };
+        socket.join(roomId);
+        socket.join(socket.id);
+        socket.emit('roomCreated', { roomId });
+        broadcast(io, roomId, rooms);
+      });
+
+      socket.on('joinRoom', ({ roomId, name }) => {
+        const room = rooms[roomId];
+        if (!room) return socket.emit('error', { message: 'Room not found' });
+        if (room.state !== 'lobby') return socket.emit('error', { message: 'Game already started' });
+        if (room.players.length >= 7) return socket.emit('error', { message: 'Room full' });
+        if (room.players.find(p => p.id === socket.id)) return;
+        room.players.push({ id: socket.id, name, score: 0, connected: true });
+        socket.join(roomId);
+        socket.join(socket.id);
+        socket.emit('roomJoined', { roomId });
+        broadcast(io, roomId, rooms);
+      });
+
+      socket.on('startGame', ({ roomId }) => {
+        const room = rooms[roomId];
+        if (!room || room.host !== socket.id) return;
+        if (room.players.length < 2) return socket.emit('error', { message: 'Need at least 2 players' });
+        room.maxRounds = maxRound(room.players.length);
+        startRound(io, roomId, rooms);
+      });
+
+      socket.on('placeBid', ({ roomId, bid }) => {
+        const room = rooms[roomId];
+        if (!room || room.state !== 'bidding' || room.currentPlayer !== socket.id) return;
+        room.bids[socket.id] = bid;
+        nextBidder(io, roomId, rooms);
+      });
+
+      socket.on('playCard', ({ roomId, card }) => {
+        const result = doPlayCard(io, roomId, socket.id, card, rooms);
+        if (result?.error) socket.emit('error', { message: result.error });
+      });
+
+      socket.on('nextRound', ({ roomId }) => {
+        const room = rooms[roomId];
+        if (!room || room.host !== socket.id || room.state !== 'roundEnd') return;
+        startRound(io, roomId, rooms);
+      });
+
+      socket.on('chatMessage', ({ roomId, message }) => {
+        const room = rooms[roomId];
+        if (!room) return;
+        const player = room.players.find(p => p.id === socket.id);
+        if (!player) return;
+        const msg = { id: uuidv4(), name: player.name, message, ts: Date.now() };
+        room.chat.push(msg);
+        io.to(roomId).emit('chatMessage', msg);
+      });
+
+      socket.on('disconnect', () => {
+        for (const roomId of Object.keys(rooms)) {
+          const p = rooms[roomId].players.find(p => p.id === socket.id);
+          if (p) { p.connected = false; broadcast(io, roomId, rooms); }
+        }
+      });
     });
+  }
 
-    socket.on('startGame', ({ roomId }) => {
-      const room = rooms[roomId];
-      if (!room || room.host !== socket.id) return;
-      if (room.players.length < 2) return socket.emit('error', { message: 'Need at least 2 players' });
-      room.maxRounds = maxRound(room.players.length);
-      startRound(roomId);
-    });
+  res.end();
+};
 
-    socket.on('placeBid', ({ roomId, bid }) => {
-      const room = rooms[roomId];
-      if (!room || room.state !== 'bidding' || room.currentPlayer !== socket.id) return;
-      room.bids[socket.id] = bid;
-      nextBidder(roomId);
-    });
-
-    socket.on('playCard', ({ roomId, card }) => {
-      const result = playCard(roomId, socket.id, card);
-      if (result?.error) socket.emit('error', { message: result.error });
-    });
-
-    socket.on('nextRound', ({ roomId }) => {
-      const room = rooms[roomId];
-      if (!room || room.host !== socket.id || room.state !== 'roundEnd') return;
-      startRound(roomId);
-    });
-
-    socket.on('chatMessage', ({ roomId, message }) => {
-      const room = rooms[roomId];
-      if (!room) return;
-      const player = room.players.find(p => p.id === socket.id);
-      if (!player) return;
-      const msg = { id: uuidv4(), name: player.name, message, ts: Date.now() };
-      room.chat.push(msg);
-      io.to(roomId).emit('chatMessage', msg);
-    });
-
-    socket.on('disconnect', () => {
-      for (const roomId of Object.keys(rooms)) {
-        const p = rooms[roomId].players.find(p => p.id === socket.id);
-        if (p) { p.connected = false; broadcast(roomId); }
-      }
-    });
-  });
-
-  return io;
-}
-
-function broadcast(roomId) {
+function broadcast(io, roomId, rooms) {
   const room = rooms[roomId];
   if (!room) return;
   const pub = {
@@ -109,23 +116,17 @@ function broadcast(roomId) {
   });
 }
 
-function startRound(roomId) {
+function startRound(io, roomId, rooms) {
   const room = rooms[roomId];
   room.round += 1;
   const { hands, trumpCard, trumpSuit } = dealRound(room.players, room.round);
-  room.hands = hands;
-  room.trumpCard = trumpCard;
-  room.trumpSuit = trumpSuit;
-  room.bids = {};
+  Object.assign(room, { hands, trumpCard, trumpSuit, bids: {}, currentTrick: [], leadSuit: null, state: 'bidding' });
   room.tricks = Object.fromEntries(room.players.map(p => [p.id, 0]));
-  room.currentTrick = [];
-  room.leadSuit = null;
-  room.state = 'bidding';
   room.currentPlayer = room.players[(room.dealerIndex + 1) % room.players.length].id;
-  broadcast(roomId);
+  broadcast(io, roomId, rooms);
 }
 
-function nextBidder(roomId) {
+function nextBidder(io, roomId, rooms) {
   const room = rooms[roomId];
   const remaining = room.players.filter(p => !(p.id in room.bids));
   if (remaining.length === 0) {
@@ -134,10 +135,10 @@ function nextBidder(roomId) {
   } else {
     room.currentPlayer = remaining[0].id;
   }
-  broadcast(roomId);
+  broadcast(io, roomId, rooms);
 }
 
-function playCard(roomId, playerId, card) {
+function doPlayCard(io, roomId, playerId, card, rooms) {
   const room = rooms[roomId];
   if (room.state !== 'playing') return { error: 'Not playing phase' };
   if (room.currentPlayer !== playerId) return { error: 'Not your turn' };
@@ -145,8 +146,8 @@ function playCard(roomId, playerId, card) {
   const idx = hand.findIndex(c => c.suit === card.suit && c.rank === card.rank);
   if (idx === -1) return { error: 'Card not in hand' };
   if (room.currentTrick.length > 0 && room.leadSuit) {
-    const hasSuit = hand.some(c => c.suit === room.leadSuit);
-    if (hasSuit && card.suit !== room.leadSuit) return { error: 'Must follow suit' };
+    if (hand.some(c => c.suit === room.leadSuit) && card.suit !== room.leadSuit)
+      return { error: 'Must follow suit' };
   }
   hand.splice(idx, 1);
   if (room.currentTrick.length === 0) room.leadSuit = card.suit;
@@ -160,17 +161,17 @@ function playCard(roomId, playerId, card) {
     room.leadSuit = null;
     io.to(roomId).emit('trickWon', { winnerId, trick: snap });
     const total = Object.values(room.tricks).reduce((a, b) => a + b, 0);
-    if (total === room.round) endRound(roomId);
-    else { room.currentPlayer = winnerId; broadcast(roomId); }
+    if (total === room.round) endRound(io, roomId, rooms);
+    else { room.currentPlayer = winnerId; broadcast(io, roomId, rooms); }
   } else {
     const i = room.players.findIndex(p => p.id === playerId);
     room.currentPlayer = room.players[(i + 1) % room.players.length].id;
-    broadcast(roomId);
+    broadcast(io, roomId, rooms);
   }
   return { ok: true };
 }
 
-function endRound(roomId) {
+function endRound(io, roomId, rooms) {
   const room = rooms[roomId];
   room.state = 'roundEnd';
   const playerScores = room.players.map(p => {
@@ -183,12 +184,7 @@ function endRound(roomId) {
   room.scores.push({ round: room.round, playerScores });
   room.dealerIndex = (room.dealerIndex + 1) % room.players.length;
   if (room.round >= room.maxRounds) room.state = 'gameOver';
-  broadcast(roomId);
+  broadcast(io, roomId, rooms);
 }
 
-module.exports = (req, res) => {
-  if (!res.socket.server.io) {
-    res.socket.server.io = initIO(res);
-  }
-  res.end();
-};
+module.exports = ioHandler;

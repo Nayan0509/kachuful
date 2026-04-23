@@ -1,10 +1,10 @@
 import { io } from 'socket.io-client';
 
-const isProduction = process.env.NODE_ENV === 'production';
+const SERVER = process.env.REACT_APP_SERVER_URL || 'http://localhost:3001';
 
-const socket = io(isProduction ? undefined : 'http://localhost:3001', {
+const socket = io(SERVER, {
   path: '/api/socket',
-  transports: ['polling'],   // polling only — works on Vercel serverless
+  transports: ['websocket', 'polling'],
   autoConnect: false,
 });
 

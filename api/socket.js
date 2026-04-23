@@ -1,6 +1,6 @@
 const { Server } = require('socket.io');
 const { v4: uuidv4 } = require('uuid');
-const { maxRound, dealRound, determineTrickWinner, calcScore } = require('./_gameEngine');
+const { buildRoundSequence, dealRound, determineTrickWinner, calcScore } = require('./_gameEngine');
 
 const rooms = {};
 
@@ -54,13 +54,26 @@ const ioHandler = (req, res) => {
         const room = rooms[roomId];
         if (!room || room.host !== socket.id) return;
         if (room.players.length < 2) return socket.emit('error', { message: 'Need at least 2 players' });
-        room.maxRounds = maxRound(room.players.length);
+        room.roundSequence = buildRoundSequence(room.players.length);
+        room.maxRounds = room.roundSequence.length;
+        room.round = 0;
         startRound(io, roomId, rooms);
       });
 
       socket.on('placeBid', ({ roomId, bid }) => {
         const room = rooms[roomId];
         if (!room || room.state !== 'bidding' || room.currentPlayer !== socket.id) return;
+
+        // Last bidder cannot make total equal round number
+        const remaining = room.players.filter(p => !(p.id in room.bids));
+        if (remaining.length === 1 && remaining[0].id === socket.id) {
+          const totalSoFar = Object.values(room.bids).reduce((a, b) => a + b, 0);
+          const forbidden = room.round - totalSoFar;
+          if (bid === forbidden) {
+            return socket.emit('error', { message: `You cannot bid ${forbidden} — total bids cannot equal ${room.round}` });
+          }
+        }
+
         room.bids[socket.id] = bid;
         nextBidder(io, roomId, rooms);
       });
@@ -119,7 +132,8 @@ function broadcast(io, roomId, rooms) {
 function startRound(io, roomId, rooms) {
   const room = rooms[roomId];
   room.round += 1;
-  const { hands, trumpCard, trumpSuit } = dealRound(room.players, room.round);
+  const cardsThisRound = room.roundSequence[room.round - 1];
+  const { hands, trumpCard, trumpSuit } = dealRound(room.players, cardsThisRound);
   Object.assign(room, { hands, trumpCard, trumpSuit, bids: {}, currentTrick: [], leadSuit: null, state: 'bidding' });
   room.tricks = Object.fromEntries(room.players.map(p => [p.id, 0]));
   room.currentPlayer = room.players[(room.dealerIndex + 1) % room.players.length].id;

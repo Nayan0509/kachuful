@@ -72,7 +72,15 @@ export default function GameTable({ socket, myId, roomId, gameState, trickWon, s
       <div className="gt-header">
         <div className="gt-title">♠ Kachuful ♥</div>
         <div className="gt-round-info">
-          Round {gameState.round} of {gameState.maxRounds}
+          Round {gameState.round}/{gameState.maxRounds} &nbsp;·&nbsp;
+          <span style={{ color: 'var(--gold)' }}>{gameState.currentCards} card{gameState.currentCards !== 1 ? 's' : ''}</span>
+          {gameState.round > 0 && gameState.roundSequence && (() => {
+            const max = Math.max(...gameState.roundSequence);
+            const isGoingUp = gameState.round <= gameState.roundSequence.indexOf(max) + 1;
+            return <span style={{ color: 'rgba(255,255,255,.4)', fontSize: 11, marginLeft: 6 }}>
+              {isGoingUp ? '▲ going up' : '▼ going down'}
+            </span>;
+          })()}
         </div>
         <div className="gt-trump">
           <span className="trump-label">Trump:</span>
@@ -222,6 +230,8 @@ export default function GameTable({ socket, myId, roomId, gameState, trickWon, s
         <BidPanel
           roundNumber={gameState.round}
           trumpCard={gameState.trumpCard}
+          myHand={myHand}
+          forbiddenBid={gameState.forbiddenBid}
           onBid={handleBid}
         />
       )}

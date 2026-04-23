@@ -20,8 +20,22 @@ function shuffle(deck) {
   return d;
 }
 
-function maxRound(playerCount) {
-  return Math.floor(52 / playerCount);
+function maxCardsPerRound(playerCount) {
+  // Cap at 13 (one suit), limited by deck size
+  return Math.min(13, Math.floor(52 / playerCount));
+}
+
+// Build the full round sequence: 1,2,3...max...3,2,1
+function buildRoundSequence(playerCount) {
+  const max = maxCardsPerRound(playerCount);
+  const up   = Array.from({ length: max }, (_, i) => i + 1);       // 1..max
+  const down = Array.from({ length: max - 1 }, (_, i) => max - 1 - i); // max-1..1
+  return [...up, ...down];
+}
+
+// Total number of rounds for display
+function totalRounds(playerCount) {
+  return buildRoundSequence(playerCount).length;
 }
 
 function dealRound(players, roundNumber) {
@@ -65,6 +79,6 @@ function calcScore(bid, tricks) {
 }
 
 module.exports = {
-  createDeck, shuffle, maxRound, dealRound,
-  determineTrickWinner, calcScore, SUITS, RANKS
+  createDeck, shuffle, maxCardsPerRound, buildRoundSequence, totalRounds,
+  dealRound, determineTrickWinner, calcScore, SUITS, RANKS
 };

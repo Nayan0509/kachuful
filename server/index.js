@@ -5,7 +5,7 @@ const { Server } = require('socket.io');
 const cors = require('cors');
 const { v4: uuidv4 } = require('uuid');
 const {
-  maxRound, dealRound, determineTrickWinner, calcScore
+  buildRoundSequence, totalRounds, dealRound, determineTrickWinner, calcScore
 } = require('./gameEngine');
 
 const app = express();
@@ -36,9 +36,10 @@ function createRoom(hostId, hostName) {
     id: roomId,
     host: hostId,
     players: [{ id: hostId, name: hostName, score: 0, connected: true }],
-    state: 'lobby',   // lobby | bidding | playing | roundEnd | gameOver
-    round: 0,
-    maxRounds: 0,
+    state: 'lobby',
+    round: 0,          // index into roundSequence
+    roundSequence: [], // filled on game start
+    maxRounds: 0,      // total rounds
     hands: {},
     trumpCard: null,
     trumpSuit: null,
@@ -48,13 +49,23 @@ function createRoom(hostId, hostName) {
     leadSuit: null,
     currentPlayer: null,
     dealerIndex: 0,
-    scores: [],       // [{round, playerScores:[{id,name,bid,tricks,delta,total}]}]
+    scores: [],
     chat: []
   };
   return roomId;
 }
 
 function getPublicRoom(room) {
+  // Calculate forbidden bid for last bidder
+  const bidders = Object.keys(room.bids);
+  const remaining = room.players.filter(p => !bidders.includes(p.id));
+  let forbiddenBid = null;
+  if (room.state === 'bidding' && remaining.length === 1) {
+    const totalSoFar = Object.values(room.bids).reduce((a, b) => a + b, 0);
+    forbiddenBid = room.round - totalSoFar;
+    if (forbiddenBid < 0) forbiddenBid = null; // already impossible, no restriction needed
+  }
+
   return {
     id: room.id,
     host: room.host,
@@ -64,6 +75,8 @@ function getPublicRoom(room) {
     state: room.state,
     round: room.round,
     maxRounds: room.maxRounds,
+    roundSequence: room.roundSequence,
+    currentCards: room.roundSequence[room.round - 1] || 0,
     trumpCard: room.trumpCard,
     trumpSuit: room.trumpSuit,
     bids: room.bids,
@@ -73,7 +86,8 @@ function getPublicRoom(room) {
     currentPlayer: room.currentPlayer,
     dealerIndex: room.dealerIndex,
     scores: room.scores,
-    chat: room.chat.slice(-50)
+    chat: room.chat.slice(-50),
+    forbiddenBid
   };
 }
 
@@ -91,7 +105,8 @@ function broadcastRoom(roomId) {
 function startRound(roomId) {
   const room = rooms[roomId];
   room.round += 1;
-  const { hands, trumpCard, trumpSuit } = dealRound(room.players, room.round);
+  const cardsThisRound = room.roundSequence[room.round - 1];
+  const { hands, trumpCard, trumpSuit } = dealRound(room.players, cardsThisRound);
   room.hands = hands;
   room.trumpCard = trumpCard;
   room.trumpSuit = trumpSuit;
@@ -100,7 +115,6 @@ function startRound(roomId) {
   room.currentTrick = [];
   room.leadSuit = null;
   room.state = 'bidding';
-  // Bidding starts left of dealer
   const bidStart = (room.dealerIndex + 1) % room.players.length;
   room.currentPlayer = room.players[bidStart].id;
   broadcastRoom(roomId);
@@ -181,7 +195,7 @@ function endRound(roomId) {
     return { id: p.id, name: p.name, bid, tricks, delta, total: p.score };
   });
 
-  room.scores.push({ round: room.round, playerScores });
+  room.scores.push({ round: room.round, cardsDealt: room.roundSequence[room.round - 1], playerScores });
   room.dealerIndex = (room.dealerIndex + 1) % room.players.length;
 
   if (room.round >= room.maxRounds) {
@@ -233,8 +247,9 @@ io.on('connection', (socket) => {
     if (!room) return;
     if (room.host !== socket.id) return socket.emit('error', { message: 'Only host can start' });
     if (room.players.length < 2) return socket.emit('error', { message: 'Need at least 2 players' });
-    room.maxRounds = maxRound(room.players.length);
-    room.state = 'playing';
+    room.roundSequence = buildRoundSequence(room.players.length);
+    room.maxRounds = room.roundSequence.length;
+    room.round = 0;
     startRound(roomId);
   });
 
@@ -242,6 +257,17 @@ io.on('connection', (socket) => {
     const room = rooms[roomId];
     if (!room || room.state !== 'bidding') return;
     if (room.currentPlayer !== socket.id) return;
+
+    // Enforce last-bidder rule: total bids cannot equal round number
+    const remaining = room.players.filter(p => !(p.id in room.bids));
+    if (remaining.length === 1 && remaining[0].id === socket.id) {
+      const totalSoFar = Object.values(room.bids).reduce((a, b) => a + b, 0);
+      const forbidden = room.round - totalSoFar;
+      if (bid === forbidden) {
+        return socket.emit('error', { message: `You cannot bid ${forbidden} — total bids cannot equal ${room.round}` });
+      }
+    }
+
     room.bids[socket.id] = bid;
     nextBidder(roomId);
   });

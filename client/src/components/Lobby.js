@@ -6,10 +6,19 @@ export default function Lobby({ socket, myId, roomId, gameState, showToast }) {
   const [joinCode, setJoinCode] = useState('');
   const [joined, setJoined] = useState(false);
 
+  // Read invite room from URL
+  const inviteRoom = new URLSearchParams(window.location.search).get('room');
+
   useEffect(() => {
-    const invite = sessionStorage.getItem('inviteRoom');
-    if (invite) setJoinCode(invite);
-  }, []);
+    if (inviteRoom) setJoinCode(inviteRoom.toUpperCase());
+  }, [inviteRoom]);
+
+  // If user already has a saved name AND there's an invite link → auto-join immediately
+  useEffect(() => {
+    if (inviteRoom && name.trim() && myId && !joined) {
+      socket.emit('joinRoom', { roomId: inviteRoom.toUpperCase(), name: name.trim() });
+    }
+  }, [myId]); // fires once socket connects and myId is set
 
   useEffect(() => {
     if (roomId) setJoined(true);
@@ -29,6 +38,12 @@ export default function Lobby({ socket, myId, roomId, gameState, showToast }) {
     if (!name.trim()) return showToast('Enter your name first', 'error');
     if (!joinCode.trim()) return showToast('Enter a room code', 'error');
     socket.emit('joinRoom', { roomId: joinCode.trim().toUpperCase(), name: name.trim() });
+  };
+
+  // Join via invite link after typing name
+  const handleInviteJoin = () => {
+    if (!name.trim()) return showToast('Enter your name first', 'error');
+    socket.emit('joinRoom', { roomId: inviteRoom.toUpperCase(), name: name.trim() });
   };
 
   const handleStart = () => {
@@ -55,29 +70,57 @@ export default function Lobby({ socket, myId, roomId, gameState, showToast }) {
 
         {!joined ? (
           <div className="lobby-form">
-            <input
-              className="input"
-              placeholder="Your name"
-              value={name}
-              onChange={e => saveName(e.target.value)}
-              maxLength={20}
-              onKeyDown={e => e.key === 'Enter' && handleCreate()}
-            />
-            <button className="btn btn-primary" onClick={handleCreate}>
-              ✦ Create Room
-            </button>
-            <div className="divider"><span>or join</span></div>
-            <div className="join-row">
-              <input
-                className="input"
-                placeholder="Room code"
-                value={joinCode}
-                onChange={e => setJoinCode(e.target.value.toUpperCase())}
-                maxLength={6}
-                onKeyDown={e => e.key === 'Enter' && handleJoin()}
-              />
-              <button className="btn btn-secondary" onClick={handleJoin}>Join</button>
-            </div>
+
+            {/* Invite link detected — show focused join UI */}
+            {inviteRoom ? (
+              <>
+                <div className="invite-banner">
+                  🎴 You've been invited to room <strong>{inviteRoom}</strong>
+                </div>
+                <input
+                  className="input"
+                  placeholder="Enter your name to join"
+                  value={name}
+                  onChange={e => saveName(e.target.value)}
+                  maxLength={20}
+                  autoFocus
+                  onKeyDown={e => e.key === 'Enter' && handleInviteJoin()}
+                />
+                <button className="btn btn-primary" onClick={handleInviteJoin}>
+                  ▶ Join Room {inviteRoom}
+                </button>
+                <div className="divider"><span>or</span></div>
+                <button className="btn btn-secondary" onClick={handleCreate}>
+                  Create a new room instead
+                </button>
+              </>
+            ) : (
+              <>
+                <input
+                  className="input"
+                  placeholder="Your name"
+                  value={name}
+                  onChange={e => saveName(e.target.value)}
+                  maxLength={20}
+                  onKeyDown={e => e.key === 'Enter' && handleCreate()}
+                />
+                <button className="btn btn-primary" onClick={handleCreate}>
+                  ✦ Create Room
+                </button>
+                <div className="divider"><span>or join</span></div>
+                <div className="join-row">
+                  <input
+                    className="input"
+                    placeholder="Room code"
+                    value={joinCode}
+                    onChange={e => setJoinCode(e.target.value.toUpperCase())}
+                    maxLength={6}
+                    onKeyDown={e => e.key === 'Enter' && handleJoin()}
+                  />
+                  <button className="btn btn-secondary" onClick={handleJoin}>Join</button>
+                </div>
+              </>
+            )}
           </div>
         ) : (
           <div className="lobby-room">

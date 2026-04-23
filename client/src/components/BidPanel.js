@@ -1,8 +1,9 @@
 import React from 'react';
 import Card from './Card';
 
-export default function BidPanel({ roundNumber, trumpCard, onBid }) {
+export default function BidPanel({ roundNumber, trumpCard, myHand, forbiddenBid, onBid }) {
   const bids = Array.from({ length: roundNumber + 1 }, (_, i) => i);
+  const isLastBidder = forbiddenBid !== null && forbiddenBid !== undefined;
 
   return (
     <div className="bid-overlay">
@@ -16,17 +17,41 @@ export default function BidPanel({ roundNumber, trumpCard, onBid }) {
               </strong>
             : 'No trump'}
         </p>
-        {trumpCard && (
-          <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 20 }}>
-            <Card card={trumpCard} small />
+
+        {/* Show player's own cards */}
+        {myHand && myHand.length > 0 && (
+          <div className="bid-hand-preview">
+            <span className="bid-hand-label">Your cards:</span>
+            <div className="bid-hand-cards">
+              {myHand.map((card, i) => (
+                <Card key={`${card.suit}-${card.rank}-${i}`} card={card} small />
+              ))}
+            </div>
           </div>
         )}
+
+        {/* Last bidder warning */}
+        {isLastBidder && (
+          <div className="forbidden-notice">
+            ⚠️ You cannot bid <strong>{forbiddenBid}</strong> — total bids must not equal {roundNumber}
+          </div>
+        )}
+
         <div className="bid-buttons">
-          {bids.map(b => (
-            <button key={b} className="bid-btn" onClick={() => onBid(b)}>
-              {b}
-            </button>
-          ))}
+          {bids.map(b => {
+            const isForbidden = isLastBidder && b === forbiddenBid;
+            return (
+              <button
+                key={b}
+                className={`bid-btn ${isForbidden ? 'forbidden' : ''}`}
+                onClick={() => !isForbidden && onBid(b)}
+                disabled={isForbidden}
+                title={isForbidden ? `Cannot bid ${b}` : `Bid ${b}`}
+              >
+                {b}
+              </button>
+            );
+          })}
         </div>
       </div>
     </div>

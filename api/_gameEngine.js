@@ -19,8 +19,15 @@ function shuffle(deck) {
   return d;
 }
 
-function maxRound(playerCount) {
-  return Math.floor(52 / playerCount);
+function maxCardsPerRound(playerCount) {
+  return Math.min(13, Math.floor(52 / playerCount));
+}
+
+function buildRoundSequence(playerCount) {
+  const max = maxCardsPerRound(playerCount);
+  const up   = Array.from({ length: max }, (_, i) => i + 1);
+  const down = Array.from({ length: max - 1 }, (_, i) => max - 1 - i);
+  return [...up, ...down];
 }
 
 function dealRound(players, roundNumber) {
@@ -54,4 +61,4 @@ function calcScore(bid, tricks) {
   return 0;
 }
 
-module.exports = { maxRound, dealRound, determineTrickWinner, calcScore };
+module.exports = { buildRoundSequence, dealRound, determineTrickWinner, calcScore };

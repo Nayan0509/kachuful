@@ -1,0 +1,15 @@
+{
+  "version": 2,
+  "buildCommand": "npm run build --prefix client",
+  "outputDirectory": "client/build",
+  "functions": {
+    "api/socket.js": {
+      "memory": 1024,
+      "maxDuration": 30
+    }
+  },
+  "rewrites": [
+    { "source": "/api/socket/(.*)", "destination": "/api/socket" },
+    { "source": "/(.*)",            "destination": "/index.html" }
+  ]
+}

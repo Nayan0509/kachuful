@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
+import { getOrCreateUsername, saveUsername } from '../utils/username';
 import '../styles/Lobby.css';
 
 export default function Lobby({ socket, myId, roomId, gameState, showToast }) {
-  const [name, setName] = useState(() => localStorage.getItem('kachuful_name') || '');
+  const [name, setName] = useState(() => getOrCreateUsername());
   const [joinCode, setJoinCode] = useState('');
   const [joined, setJoined] = useState(false);
 
@@ -26,7 +27,7 @@ export default function Lobby({ socket, myId, roomId, gameState, showToast }) {
 
   const saveName = (n) => {
     setName(n);
-    localStorage.setItem('kachuful_name', n);
+    saveUsername(n);
   };
 
   const handleCreate = () => {
@@ -77,15 +78,18 @@ export default function Lobby({ socket, myId, roomId, gameState, showToast }) {
                 <div className="invite-banner">
                   🎴 You've been invited to room <strong>{inviteRoom}</strong>
                 </div>
-                <input
-                  className="input"
-                  placeholder="Enter your name to join"
-                  value={name}
-                  onChange={e => saveName(e.target.value)}
-                  maxLength={20}
-                  autoFocus
-                  onKeyDown={e => e.key === 'Enter' && handleInviteJoin()}
-                />
+                <div className="name-row">
+                  <input
+                    className="input"
+                    placeholder="Your name"
+                    value={name}
+                    onChange={e => saveName(e.target.value)}
+                    maxLength={20}
+                    autoFocus
+                    onKeyDown={e => e.key === 'Enter' && handleInviteJoin()}
+                  />
+                </div>
+                <p className="name-hint">Auto-generated · you can edit it</p>
                 <button className="btn btn-primary" onClick={handleInviteJoin}>
                   ▶ Join Room {inviteRoom}
                 </button>
@@ -96,14 +100,31 @@ export default function Lobby({ socket, myId, roomId, gameState, showToast }) {
               </>
             ) : (
               <>
-                <input
-                  className="input"
-                  placeholder="Your name"
-                  value={name}
-                  onChange={e => saveName(e.target.value)}
-                  maxLength={20}
-                  onKeyDown={e => e.key === 'Enter' && handleCreate()}
-                />
+                <div className="name-row">
+                  <input
+                    className="input"
+                    placeholder="Your name"
+                    value={name}
+                    onChange={e => saveName(e.target.value)}
+                    maxLength={20}
+                    onKeyDown={e => e.key === 'Enter' && handleCreate()}
+                  />
+                  <button
+                    className="btn-icon"
+                    title="Generate new name"
+                    onClick={() => {
+                      // Clear saved so getOrCreate generates fresh
+                      localStorage.removeItem('kachuful_name');
+                      const { getOrCreateUsername } = require('../utils/username');
+                      // Force new random suffix
+                      const adj = ['Swift','Bold','Clever','Lucky','Sharp','Brave','Sly','Wild','Cool','Calm'];
+                      const noun = ['Fox','Ace','Wolf','King','Hawk','Bear','Lion','Rook','Jack','Duke'];
+                      const n = adj[Math.floor(Math.random()*adj.length)] + noun[Math.floor(Math.random()*noun.length)] + Math.floor(Math.random()*900+100);
+                      saveName(n);
+                    }}
+                  >🎲</button>
+                </div>
+                <p className="name-hint">Auto-generated · you can edit it</p>
                 <button className="btn btn-primary" onClick={handleCreate}>
                   ✦ Create Room
                 </button>

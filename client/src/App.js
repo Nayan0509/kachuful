@@ -7,7 +7,7 @@ import Toast from './components/Toast';
 import './styles/App.css';
 
 export default function App() {
-  const [screen, setScreen] = useState('lobby'); // lobby | game | gameOver
+  const [screen, setScreen] = useState('lobby');
   const [gameState, setGameState] = useState(null);
   const [myId, setMyId] = useState(null);
   const [roomId, setRoomId] = useState(null);
@@ -20,10 +20,28 @@ export default function App() {
 
   useEffect(() => {
     socket.connect();
-    socket.on('connect', () => setMyId(socket.id));
 
-    socket.on('roomCreated', ({ roomId }) => setRoomId(roomId));
-    socket.on('roomJoined',  ({ roomId }) => setRoomId(roomId));
+    socket.on('connect', () => {
+      const newId = socket.id;
+      setMyId(newId);
+
+      // Attempt rejoin if we have saved session
+      const savedRoom = sessionStorage.getItem('kachuful_room');
+      const savedPid  = sessionStorage.getItem('kachuful_pid');
+      const savedName = localStorage.getItem('kachuful_name');
+      if (savedRoom && savedPid && savedName) {
+        socket.emit('rejoinRoom', { roomId: savedRoom, oldId: savedPid, name: savedName });
+      }
+    });
+
+    socket.on('roomCreated', ({ roomId }) => {
+      setRoomId(roomId);
+      sessionStorage.setItem('kachuful_room', roomId);
+    });
+    socket.on('roomJoined', ({ roomId }) => {
+      setRoomId(roomId);
+      sessionStorage.setItem('kachuful_room', roomId);
+    });
 
     socket.on('gameState', (state) => {
       setGameState(state);
@@ -37,14 +55,21 @@ export default function App() {
       setTimeout(() => setTrickWon(null), 1800);
     });
 
-    socket.on('error', ({ message }) => showToast(message, 'error'));
+    socket.on('autoActed', ({ playerId, action }) => {
+      // find player name from gameState if available
+      showToast(`⏱ Auto: ${action}`, 'info');
+    });
 
-    // Handle invite link
-    const params = new URLSearchParams(window.location.search);
-    const inviteRoom = params.get('room');
-    if (inviteRoom) {
-      sessionStorage.setItem('inviteRoom', inviteRoom);
-    }
+    socket.on('kicked', ({ message }) => {
+      showToast(message, 'error');
+      sessionStorage.removeItem('kachuful_room');
+      sessionStorage.removeItem('kachuful_pid');
+      setScreen('lobby');
+      setGameState(null);
+      setRoomId(null);
+    });
+
+    socket.on('error', ({ message }) => showToast(message, 'error'));
 
     return () => socket.disconnect();
   }, [showToast]);
@@ -80,6 +105,8 @@ export default function App() {
           gameState={gameState}
           myId={myId}
           onPlayAgain={() => {
+            sessionStorage.removeItem('kachuful_room');
+            sessionStorage.removeItem('kachuful_pid');
             setScreen('lobby');
             setGameState(null);
             setRoomId(null);

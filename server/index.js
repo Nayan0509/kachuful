@@ -5,7 +5,7 @@ const { Server } = require('socket.io');
 const cors = require('cors');
 const { v4: uuidv4 } = require('uuid');
 const {
-  buildRoundSequence, totalRounds, dealRound, determineTrickWinner, calcScore
+  buildRoundSequence, dealRound, determineTrickWinner, calcScore
 } = require('./gameEngine');
 
 const app = express();
@@ -16,78 +16,118 @@ const ALLOWED_ORIGINS = process.env.ALLOWED_ORIGINS
 app.use(cors({ origin: ALLOWED_ORIGINS }));
 app.use(express.json());
 
-// ─── Serve React build ────────────────────────────────────────────────────────
 const BUILD_DIR = path.join(__dirname, 'public');
 app.use(express.static(BUILD_DIR));
 
 const server = http.createServer(app);
-
 const io = new Server(server, {
   path: '/api/socket',
   cors: { origin: ALLOWED_ORIGINS, methods: ['GET', 'POST'] }
 });
 
-// ─── In-memory state ─────────────────────────────────────────────────────────
-const rooms = {}; // roomId -> Room
+const rooms = {};
+const turnTimers = {}; // roomId -> { timer, deadline }
 
+// ─── Timer helpers ────────────────────────────────────────────────────────────
+const TURN_TIMEOUT = 15000;
+
+function clearTurnTimer(roomId) {
+  if (turnTimers[roomId]) {
+    clearTimeout(turnTimers[roomId].timer);
+    delete turnTimers[roomId];
+  }
+}
+
+function startTurnTimer(roomId) {
+  clearTurnTimer(roomId);
+  const room = rooms[roomId];
+  if (!room) return;
+  const deadline = Date.now() + TURN_TIMEOUT;
+  turnTimers[roomId] = {
+    deadline,
+    timer: setTimeout(() => autoAct(roomId), TURN_TIMEOUT)
+  };
+  // Broadcast deadline so clients can show countdown
+  io.to(roomId).emit('turnTimer', { deadline, playerId: room.currentPlayer });
+}
+
+function autoAct(roomId) {
+  const room = rooms[roomId];
+  if (!room) return;
+  if (room.state === 'bidding') {
+    // Auto bid 0 (safe default)
+    const forbidden = getForbiddenBid(room);
+    const autoBid = forbidden === 0 ? 1 : 0;
+    room.bids[room.currentPlayer] = autoBid;
+    io.to(roomId).emit('autoActed', { playerId: room.currentPlayer, action: `bid ${autoBid}` });
+    nextBidder(roomId);
+  } else if (room.state === 'playing') {
+    // Auto play first legal card
+    const hand = room.hands[room.currentPlayer] || [];
+    if (hand.length === 0) return;
+    let card = hand[0];
+    if (room.leadSuit) {
+      const suited = hand.find(c => c.suit === room.leadSuit);
+      if (suited) card = suited;
+    }
+    io.to(roomId).emit('autoActed', { playerId: room.currentPlayer, action: 'played a card' });
+    playCard(roomId, room.currentPlayer, card);
+  }
+}
+
+function getForbiddenBid(room) {
+  const remaining = room.players.filter(p => !(p.id in room.bids));
+  if (remaining.length === 1) {
+    const totalSoFar = Object.values(room.bids).reduce((a, b) => a + b, 0);
+    const f = room.roundSequence[room.round - 1] - totalSoFar;
+    return f >= 0 ? f : null;
+  }
+  return null;
+}
+
+// ─── Room helpers ─────────────────────────────────────────────────────────────
 function createRoom(hostId, hostName) {
   const roomId = Math.random().toString(36).substring(2, 8).toUpperCase();
   rooms[roomId] = {
-    id: roomId,
-    host: hostId,
+    id: roomId, host: hostId,
     players: [{ id: hostId, name: hostName, score: 0, connected: true }],
-    state: 'lobby',
-    round: 0,          // index into roundSequence
-    roundSequence: [], // filled on game start
-    maxRounds: 0,      // total rounds
-    hands: {},
-    trumpCard: null,
-    trumpSuit: null,
-    bids: {},
-    tricks: {},
-    currentTrick: [],
-    leadSuit: null,
-    currentPlayer: null,
-    dealerIndex: 0,
-    scores: [],
-    chat: []
+    state: 'lobby', round: 0,
+    roundSequence: [], maxRounds: 0,
+    hands: {}, trumpCard: null, trumpSuit: null,
+    bids: {}, tricks: {}, currentTrick: [],
+    leadSuit: null, currentPlayer: null,
+    dealerIndex: 0, scores: [], chat: [],
+    // rejoin map: name -> { score, oldId }
+    rejoinMap: {}
   };
   return roomId;
 }
 
 function getPublicRoom(room) {
-  // Calculate forbidden bid for last bidder
   const bidders = Object.keys(room.bids);
   const remaining = room.players.filter(p => !bidders.includes(p.id));
   let forbiddenBid = null;
   if (room.state === 'bidding' && remaining.length === 1) {
     const totalSoFar = Object.values(room.bids).reduce((a, b) => a + b, 0);
-    forbiddenBid = room.round - totalSoFar;
-    if (forbiddenBid < 0) forbiddenBid = null; // already impossible, no restriction needed
+    const f = (room.roundSequence[room.round - 1] || 0) - totalSoFar;
+    forbiddenBid = f >= 0 ? f : null;
   }
-
+  const timer = turnTimers[room.id];
   return {
-    id: room.id,
-    host: room.host,
+    id: room.id, host: room.host,
     players: room.players.map(p => ({
       id: p.id, name: p.name, score: p.score, connected: p.connected
     })),
-    state: room.state,
-    round: room.round,
-    maxRounds: room.maxRounds,
+    state: room.state, round: room.round, maxRounds: room.maxRounds,
     roundSequence: room.roundSequence,
     currentCards: room.roundSequence[room.round - 1] || 0,
-    trumpCard: room.trumpCard,
-    trumpSuit: room.trumpSuit,
-    bids: room.bids,
-    tricks: room.tricks,
-    currentTrick: room.currentTrick,
-    leadSuit: room.leadSuit,
-    currentPlayer: room.currentPlayer,
-    dealerIndex: room.dealerIndex,
-    scores: room.scores,
-    chat: room.chat.slice(-50),
-    forbiddenBid
+    trumpCard: room.trumpCard, trumpSuit: room.trumpSuit,
+    bids: room.bids, tricks: room.tricks,
+    currentTrick: room.currentTrick, leadSuit: room.leadSuit,
+    currentPlayer: room.currentPlayer, dealerIndex: room.dealerIndex,
+    scores: room.scores, chat: room.chat.slice(-50),
+    forbiddenBid,
+    turnDeadline: timer ? timer.deadline : null
   };
 }
 
@@ -95,10 +135,8 @@ function broadcastRoom(roomId) {
   const room = rooms[roomId];
   if (!room) return;
   const pub = getPublicRoom(room);
-  // Send each player their own hand
   room.players.forEach(p => {
-    const hand = room.hands[p.id] || [];
-    io.to(p.id).emit('gameState', { ...pub, myHand: hand });
+    io.to(p.id).emit('gameState', { ...pub, myHand: room.hands[p.id] || [] });
   });
 }
 
@@ -115,70 +153,60 @@ function startRound(roomId) {
   room.currentTrick = [];
   room.leadSuit = null;
   room.state = 'bidding';
-  const bidStart = (room.dealerIndex + 1) % room.players.length;
-  room.currentPlayer = room.players[bidStart].id;
+  room.currentPlayer = room.players[(room.dealerIndex + 1) % room.players.length].id;
   broadcastRoom(roomId);
+  startTurnTimer(roomId);
 }
 
 function nextBidder(roomId) {
   const room = rooms[roomId];
-  const bidders = Object.keys(room.bids);
-  const remaining = room.players.filter(p => !bidders.includes(p.id));
+  const remaining = room.players.filter(p => !(p.id in room.bids));
   if (remaining.length === 0) {
-    // All bids in — start playing
     room.state = 'playing';
-    const leadIdx = (room.dealerIndex + 1) % room.players.length;
-    room.currentPlayer = room.players[leadIdx].id;
-    broadcastRoom(roomId);
-    return;
+    room.currentPlayer = room.players[(room.dealerIndex + 1) % room.players.length].id;
+  } else {
+    room.currentPlayer = remaining[0].id;
   }
-  room.currentPlayer = remaining[0].id;
   broadcastRoom(roomId);
+  startTurnTimer(roomId);
 }
 
 function playCard(roomId, playerId, card) {
   const room = rooms[roomId];
   if (room.state !== 'playing') return { error: 'Not playing phase' };
   if (room.currentPlayer !== playerId) return { error: 'Not your turn' };
-
   const hand = room.hands[playerId];
   const idx = hand.findIndex(c => c.suit === card.suit && c.rank === card.rank);
   if (idx === -1) return { error: 'Card not in hand' };
-
-  // Validate follow-suit
   if (room.currentTrick.length > 0 && room.leadSuit) {
     const hasSuit = hand.some(c => c.suit === room.leadSuit);
     if (hasSuit && card.suit !== room.leadSuit) return { error: 'Must follow suit' };
   }
-
   hand.splice(idx, 1);
   if (room.currentTrick.length === 0) room.leadSuit = card.suit;
   room.currentTrick.push({ playerId, card });
 
   if (room.currentTrick.length === room.players.length) {
-    // Resolve trick
     const winnerId = determineTrickWinner(room.currentTrick, room.trumpSuit, room.leadSuit);
     room.tricks[winnerId] = (room.tricks[winnerId] || 0) + 1;
-    const trickSnapshot = [...room.currentTrick];
+    const snap = [...room.currentTrick];
     room.currentTrick = [];
     room.leadSuit = null;
-
-    // Emit trick result before clearing
-    io.to(roomId).emit('trickWon', { winnerId, trick: trickSnapshot });
-
-    // Check if round over
-    const totalTricks = Object.values(room.tricks).reduce((a, b) => a + b, 0);
-    if (totalTricks === room.round) {
+    io.to(roomId).emit('trickWon', { winnerId, trick: snap });
+    const total = Object.values(room.tricks).reduce((a, b) => a + b, 0);
+    if (total === room.roundSequence[room.round - 1]) {
+      clearTurnTimer(roomId);
       endRound(roomId);
     } else {
       room.currentPlayer = winnerId;
       broadcastRoom(roomId);
+      startTurnTimer(roomId);
     }
   } else {
-    // Next player
-    const idx2 = room.players.findIndex(p => p.id === playerId);
-    room.currentPlayer = room.players[(idx2 + 1) % room.players.length].id;
+    const i = room.players.findIndex(p => p.id === playerId);
+    room.currentPlayer = room.players[(i + 1) % room.players.length].id;
     broadcastRoom(roomId);
+    startTurnTimer(roomId);
   }
   return { ok: true };
 }
@@ -186,7 +214,6 @@ function playCard(roomId, playerId, card) {
 function endRound(roomId) {
   const room = rooms[roomId];
   room.state = 'roundEnd';
-
   const playerScores = room.players.map(p => {
     const bid = room.bids[p.id] ?? 0;
     const tricks = room.tricks[p.id] ?? 0;
@@ -194,14 +221,9 @@ function endRound(roomId) {
     p.score += delta;
     return { id: p.id, name: p.name, bid, tricks, delta, total: p.score };
   });
-
   room.scores.push({ round: room.round, cardsDealt: room.roundSequence[room.round - 1], playerScores });
   room.dealerIndex = (room.dealerIndex + 1) % room.players.length;
-
-  if (room.round >= room.maxRounds) {
-    room.state = 'gameOver';
-  }
-
+  if (room.round >= room.maxRounds) room.state = 'gameOver';
   broadcastRoom(roomId);
 }
 
@@ -212,7 +234,7 @@ io.on('connection', (socket) => {
   socket.on('createRoom', ({ name }) => {
     const roomId = createRoom(socket.id, name);
     socket.join(roomId);
-    socket.join(socket.id); // personal channel
+    socket.join(socket.id);
     socket.emit('roomCreated', { roomId });
     broadcastRoom(roomId);
   });
@@ -223,22 +245,44 @@ io.on('connection', (socket) => {
     if (room.state !== 'lobby') return socket.emit('error', { message: 'Game already started' });
     if (room.players.length >= 7) return socket.emit('error', { message: 'Room full (max 7)' });
     if (room.players.find(p => p.id === socket.id)) return;
-
-    room.players.push({ id: socket.id, name, score: 0, connected: true });
+    // Duplicate name check — append suffix if taken
+    let finalName = name;
+    let attempt = 2;
+    while (room.players.find(p => p.name.toLowerCase() === finalName.toLowerCase())) {
+      finalName = `${name}${attempt++}`;
+    }
+    room.players.push({ id: socket.id, name: finalName, score: 0, connected: true });
     socket.join(roomId);
     socket.join(socket.id);
-    socket.emit('roomJoined', { roomId });
+    socket.emit('roomJoined', { roomId, name: finalName });
     broadcastRoom(roomId);
   });
 
-  socket.on('rejoinRoom', ({ roomId, playerId }) => {
+  // Rejoin mid-game: client sends saved roomId + old socketId
+  socket.on('rejoinRoom', ({ roomId, oldId, name }) => {
     const room = rooms[roomId];
     if (!room) return socket.emit('error', { message: 'Room not found' });
-    const player = room.players.find(p => p.id === playerId);
-    if (!player) return socket.emit('error', { message: 'Player not found' });
+
+    // Find by oldId first, then by name as fallback
+    let player = room.players.find(p => p.id === oldId);
+    if (!player && name) player = room.players.find(p => p.name === name && !p.connected);
+    if (!player) return socket.emit('error', { message: 'Player not found in room' });
+
+    // Remap socket id
+    const oldSocketId = player.id;
+    player.id = socket.id;
     player.connected = true;
+
+    // Remap hands, bids, tricks
+    if (room.hands[oldSocketId]) { room.hands[socket.id] = room.hands[oldSocketId]; delete room.hands[oldSocketId]; }
+    if (room.bids[oldSocketId] !== undefined) { room.bids[socket.id] = room.bids[oldSocketId]; delete room.bids[oldSocketId]; }
+    if (room.tricks[oldSocketId] !== undefined) { room.tricks[socket.id] = room.tricks[oldSocketId]; delete room.tricks[oldSocketId]; }
+    if (room.currentPlayer === oldSocketId) room.currentPlayer = socket.id;
+    if (room.host === oldSocketId) room.host = socket.id;
+
     socket.join(roomId);
     socket.join(socket.id);
+    socket.emit('roomJoined', { roomId });
     broadcastRoom(roomId);
   });
 
@@ -257,17 +301,10 @@ io.on('connection', (socket) => {
     const room = rooms[roomId];
     if (!room || room.state !== 'bidding') return;
     if (room.currentPlayer !== socket.id) return;
-
-    // Enforce last-bidder rule: total bids cannot equal round number
-    const remaining = room.players.filter(p => !(p.id in room.bids));
-    if (remaining.length === 1 && remaining[0].id === socket.id) {
-      const totalSoFar = Object.values(room.bids).reduce((a, b) => a + b, 0);
-      const forbidden = room.round - totalSoFar;
-      if (bid === forbidden) {
-        return socket.emit('error', { message: `You cannot bid ${forbidden} — total bids cannot equal ${room.round}` });
-      }
+    const forbidden = getForbiddenBid(room);
+    if (bid === forbidden) {
+      return socket.emit('error', { message: `You cannot bid ${forbidden} — total bids cannot equal ${room.roundSequence[room.round - 1]}` });
     }
-
     room.bids[socket.id] = bid;
     nextBidder(roomId);
   });
@@ -279,9 +316,20 @@ io.on('connection', (socket) => {
 
   socket.on('nextRound', ({ roomId }) => {
     const room = rooms[roomId];
-    if (!room || room.host !== socket.id) return;
-    if (room.state !== 'roundEnd') return;
+    if (!room || room.host !== socket.id || room.state !== 'roundEnd') return;
     startRound(roomId);
+  });
+
+  // Host kicks a player (lobby only)
+  socket.on('kickPlayer', ({ roomId, playerId }) => {
+    const room = rooms[roomId];
+    if (!room) return;
+    if (room.host !== socket.id) return socket.emit('error', { message: 'Only host can kick' });
+    if (room.state !== 'lobby') return socket.emit('error', { message: 'Can only kick in lobby' });
+    if (playerId === socket.id) return socket.emit('error', { message: 'Cannot kick yourself' });
+    room.players = room.players.filter(p => p.id !== playerId);
+    io.to(playerId).emit('kicked', { message: 'You were removed from the room' });
+    broadcastRoom(roomId);
   });
 
   socket.on('chatMessage', ({ roomId, message }) => {
@@ -300,20 +348,20 @@ io.on('connection', (socket) => {
       const player = room.players.find(p => p.id === socket.id);
       if (player) {
         player.connected = false;
+        // Save rejoin info
+        room.rejoinMap[player.name] = { oldId: socket.id, score: player.score };
         broadcastRoom(roomId);
       }
     }
   });
 });
 
-// ─── REST: room info for invite links ────────────────────────────────────────
 app.get('/room/:id', (req, res) => {
   const room = rooms[req.params.id];
   if (!room) return res.status(404).json({ error: 'Not found' });
   res.json({ id: room.id, players: room.players.length, state: room.state });
 });
 
-// ─── Catch-all: serve React for any non-API route ─────────────────────────────
 app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });

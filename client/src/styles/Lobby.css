@@ -45,6 +45,10 @@
 
 .lobby-form { display: flex; flex-direction: column; gap: 14px; }
 
+.name-row { display: flex; gap: 8px; align-items: center; }
+.name-row .input { flex: 1; }
+.name-hint { font-size: 11px; color: rgba(255,255,255,.3); text-align: center; margin-top: -6px; }
+
 .invite-banner {
   text-align: center;
   background: rgba(240,192,64,.1);

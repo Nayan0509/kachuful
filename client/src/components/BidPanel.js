@@ -21,10 +21,10 @@ export default function BidPanel({ roundNumber, trumpCard, myHand, forbiddenBid,
         {/* Show player's own cards */}
         {myHand && myHand.length > 0 && (
           <div className="bid-hand-preview">
-            <span className="bid-hand-label">Your cards:</span>
+            <span className="bid-hand-label">Your cards — decide your bid:</span>
             <div className="bid-hand-cards">
               {myHand.map((card, i) => (
-                <Card key={`${card.suit}-${card.rank}-${i}`} card={card} small />
+                <Card key={`${card.suit}-${card.rank}-${i}`} card={card} faceDown={false} />
               ))}
             </div>
           </div>

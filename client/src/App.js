@@ -26,8 +26,8 @@ export default function App() {
       setMyId(newId);
 
       // Attempt rejoin if we have saved session
-      const savedRoom = sessionStorage.getItem('kachuful_room');
-      const savedPid  = sessionStorage.getItem('kachuful_pid');
+      const savedRoom = localStorage.getItem('kachuful_room');
+      const savedPid  = localStorage.getItem('kachuful_pid');
       const savedName = localStorage.getItem('kachuful_name');
       if (savedRoom && savedPid && savedName) {
         socket.emit('rejoinRoom', { roomId: savedRoom, oldId: savedPid, name: savedName });
@@ -36,11 +36,11 @@ export default function App() {
 
     socket.on('roomCreated', ({ roomId }) => {
       setRoomId(roomId);
-      sessionStorage.setItem('kachuful_room', roomId);
+      localStorage.setItem('kachuful_room', roomId);
     });
     socket.on('roomJoined', ({ roomId }) => {
       setRoomId(roomId);
-      sessionStorage.setItem('kachuful_room', roomId);
+      localStorage.setItem('kachuful_room', roomId);
     });
 
     socket.on('gameState', (state) => {
@@ -62,8 +62,8 @@ export default function App() {
 
     socket.on('kicked', ({ message }) => {
       showToast(message, 'error');
-      sessionStorage.removeItem('kachuful_room');
-      sessionStorage.removeItem('kachuful_pid');
+      localStorage.removeItem('kachuful_room');
+      localStorage.removeItem('kachuful_pid');
       setScreen('lobby');
       setGameState(null);
       setRoomId(null);
@@ -105,8 +105,8 @@ export default function App() {
           gameState={gameState}
           myId={myId}
           onPlayAgain={() => {
-            sessionStorage.removeItem('kachuful_room');
-            sessionStorage.removeItem('kachuful_pid');
+            localStorage.removeItem('kachuful_room');
+            localStorage.removeItem('kachuful_pid');
             setScreen('lobby');
             setGameState(null);
             setRoomId(null);

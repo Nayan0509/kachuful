@@ -5,11 +5,24 @@ import '../styles/GameTable.css';
 
 const TURN_TIMEOUT = 15;
 
+// Format coin amounts like the game: 1.5 Lac, 3.64 Cr, etc.
+function formatCoins(n) {
+  if (!n && n !== 0) return '—';
+  if (n >= 1e7) return (n / 1e7).toFixed(2) + ' Cr';
+  if (n >= 1e5) return (n / 1e5).toFixed(2) + ' Lac';
+  if (n >= 1e3) return (n / 1e3).toFixed(1) + 'K';
+  return String(n);
+}
+
+// Suit display name for HUKAM badge
+const SUIT_NAME = { '♠': 'SPADES', '♥': 'HEARTS', '♦': 'DIAMONDS', '♣': 'CLUBS' };
+const SUIT_COLOR = { '♠': '#1a1a2e', '♥': '#dc2626', '♦': '#dc2626', '♣': '#1a1a2e' };
+
 export default function GameTable({ socket, myId, roomId, gameState, trickWon, showToast }) {
-  const [chatMsg, setChatMsg] = useState('');
   const [timeLeft, setTimeLeft] = useState(null);
-  const chatRef = useRef(null);
+  const [showBootAnim, setShowBootAnim] = useState(false);
   const timerRef = useRef(null);
+  const prevStateRef = useRef(null);
 
   const myHand = gameState.myHand || [];
   const isBidding = gameState.state === 'bidding';
@@ -19,9 +32,18 @@ export default function GameTable({ socket, myId, roomId, gameState, trickWon, s
   const isMyPlayTurn = isPlaying && gameState.currentPlayer === myId;
   const isMyBidTurn = isBidding && gameState.currentPlayer === myId && myBid === undefined;
   const isHost = gameState.host === myId;
-  const opponents = gameState.players.filter(p => p.id !== myId);
 
-  // ── Turn countdown ──────────────────────────────────────────────────────────
+  // Separate players into positions: me (bottom), and up to 3 opponents
+  const me = gameState.players.find(p => p.id === myId);
+  const opponents = gameState.players.filter(p => p.id !== myId);
+  // Assign positions: top, left, right based on count
+  const positionMap = ['top', 'left', 'right'];
+  const positionedOpponents = opponents.map((opp, i) => ({
+    ...opp,
+    position: positionMap[i] || 'top'
+  }));
+
+  // Turn countdown
   useEffect(() => {
     if (timerRef.current) clearInterval(timerRef.current);
     if (!gameState.turnDeadline) { setTimeLeft(null); return; }
@@ -35,15 +57,20 @@ export default function GameTable({ socket, myId, roomId, gameState, trickWon, s
     return () => clearInterval(timerRef.current);
   }, [gameState.turnDeadline, gameState.currentPlayer]);
 
+  // Boot amount animation when round starts
   useEffect(() => {
-    if (chatRef.current) chatRef.current.scrollTop = chatRef.current.scrollHeight;
-  }, [gameState.chat]);
+    if (prevStateRef.current === 'lobby' && gameState.state === 'bidding') {
+      setShowBootAnim(true);
+      setTimeout(() => setShowBootAnim(false), 2500);
+    }
+    prevStateRef.current = gameState.state;
+  }, [gameState.state]);
 
-  // Save roomId + socketId for rejoin
+  // Save session
   useEffect(() => {
     if (roomId && myId) {
-      sessionStorage.setItem('kachuful_room', roomId);
-      sessionStorage.setItem('kachuful_pid', myId);
+      localStorage.setItem('kachuful_room', roomId);
+      localStorage.setItem('kachuful_pid', myId);
     }
   }, [roomId, myId]);
 
@@ -52,32 +79,26 @@ export default function GameTable({ socket, myId, roomId, gameState, trickWon, s
     socket.emit('playCard', { roomId, card });
   };
 
+  // Follow-suit: if lead suit exists and player has that suit, only those cards are legal
+  const getCardLegality = (card) => {
+    if (!isMyPlayTurn) return 'disabled';
+    const leadSuit = gameState.leadSuit;
+    if (!leadSuit) return 'legal'; // first card of trick — anything goes
+    const hasSuit = myHand.some(c => c.suit === leadSuit);
+    if (hasSuit && card.suit !== leadSuit) return 'illegal';
+    return 'legal';
+  };
+
   const handleBid = (bid) => socket.emit('placeBid', { roomId, bid });
   const handleNextRound = () => socket.emit('nextRound', { roomId });
   const handleKick = (pid) => socket.emit('kickPlayer', { roomId, playerId: pid });
 
-  const sendChat = () => {
-    if (!chatMsg.trim()) return;
-    socket.emit('chatMessage', { roomId, message: chatMsg.trim() });
-    setChatMsg('');
-  };
-
-  // Position opponents around the felt ellipse
-  const getOpponentPosition = (idx, total) => {
-    const angle = (idx / total) * Math.PI * 2 - Math.PI / 2;
-    return {
-      left: `${50 + 42 * Math.cos(angle)}%`,
-      top:  `${50 + 32 * Math.sin(angle)}%`,
-      transform: 'translate(-50%, -50%)'
-    };
-  };
-
   const getTrickCardPosition = (idx, total) => {
     const angle = (idx / total) * Math.PI * 2;
-    const r = 55;
+    const r = 52;
     return {
       left: `calc(50% + ${r * Math.cos(angle)}px)`,
-      top:  `calc(50% + ${r * Math.sin(angle)}px)`,
+      top: `calc(50% + ${r * Math.sin(angle)}px)`,
       transform: 'translate(-50%, -50%)'
     };
   };
@@ -88,161 +109,184 @@ export default function GameTable({ socket, myId, roomId, gameState, trickWon, s
   };
 
   const timerPct = timeLeft !== null ? (timeLeft / TURN_TIMEOUT) * 100 : 100;
-  const timerColor = timeLeft <= 5 ? '#e03030' : timeLeft <= 10 ? '#f0c040' : '#4caf50';
-
-  const currentPlayerName = gameState.players.find(p => p.id === gameState.currentPlayer)?.name || '';
+  const timerColor = timeLeft <= 5 ? '#ef4444' : timeLeft <= 10 ? '#f59e0b' : '#10b981';
+  const trumpSuit = gameState.trumpCard?.suit;
 
   return (
-    <div className="game-table">
+    <div className="gt-root">
 
-      {/* ── Header ── */}
-      <div className="gt-header">
-        <div className="gt-title">♠ Kachuful ♥</div>
-        <div className="gt-round-info">
-          Round {gameState.round}/{gameState.maxRounds}&nbsp;·&nbsp;
-          <span style={{ color: 'var(--gold)' }}>
-            {gameState.currentCards} card{gameState.currentCards !== 1 ? 's' : ''}
-          </span>
-          {gameState.roundSequence?.length > 0 && (() => {
-            const max = Math.max(...gameState.roundSequence);
-            const peakIdx = gameState.roundSequence.indexOf(max);
-            const going = gameState.round - 1 <= peakIdx ? '▲' : '▼';
-            return <span style={{ color: 'rgba(255,255,255,.4)', fontSize: 11, marginLeft: 6 }}>{going}</span>;
-          })()}
+      {/* ── Top bar ── */}
+      <div className="gt-topbar">
+        <div className="gt-topbar-left">
+          <button className="gt-icon-btn" title="Back">←</button>
+          <div className="gt-coins-display">
+            <span className="gt-coin-icon">🪙</span>
+            <span className="gt-coin-amount">{formatCoins(gameState.pot || 0)}</span>
+          </div>
         </div>
-        <div className="gt-trump">
-          <span className="trump-label">Trump:</span>
-          {gameState.trumpCard ? <Card card={gameState.trumpCard} small /> : <span>None</span>}
+        <div className="gt-topbar-center">
+          <span className="gt-round-badge">Round : {gameState.round}/{gameState.maxRounds}</span>
         </div>
-      </div>
-
-      {/* ── Turn timer bar — always in grid ── */}
-      {timeLeft !== null ? (
-        <div className="turn-timer-bar">
-          <div
-            className="turn-timer-fill"
-            style={{ width: `${timerPct}%`, background: timerColor, position:'absolute', left:0, top:0, bottom:0, transition:'width .25s linear,background .5s' }}
-          />
-          <span className="turn-timer-label" style={{ color: timerColor, position:'absolute', inset:0, display:'flex', alignItems:'center', justifyContent:'center', fontSize:12, fontWeight:600, textShadow:'0 1px 4px rgba(0,0,0,.8)', zIndex:1 }}>
-            ⏱ {currentPlayerName}'s turn · {timeLeft}s
-          </span>
-        </div>
-      ) : (
-        <div className="turn-timer-bar-empty" />
-      )}
-
-      {/* ── Felt ── */}
-      <div className="gt-felt">
-
-        {/* My cards shown IN the felt at bottom — always face-up */}
-        <div className="my-felt-hand">
-          {myHand.map((card, i) => (
-            <Card
-              key={`${card.suit}-${card.rank}-${i}`}
-              card={card}
-              faceDown={false}
-              onClick={isMyPlayTurn ? () => handlePlayCard(card) : undefined}
-              disabled={!isMyPlayTurn}
-              glow={isMyPlayTurn}
-              style={{ animationDelay: `${i * 0.05}s` }}
-            />
-          ))}
-        </div>
-
-        {/* My status label */}
-        <div className="my-felt-label">
-          {isBidding && myBid === undefined && !isMyBidTurn && '⏳ Waiting to bid...'}
-          {isBidding && myBid !== undefined && `Your bid: ${myBid}`}
-          {isPlaying && myBid !== undefined && `Bid: ${myBid} · Tricks: ${myTricks}`}
-          {isMyPlayTurn && '👆 Your turn!'}
-        </div>
-
-        {/* Opponents */}
-        <div className="opponents-ring">
-          {opponents.map((opp, i) => {
-            const pos = getOpponentPosition(i, opponents.length);
-            const oppBid = gameState.bids[opp.id];
-            const oppTricks = gameState.tricks[opp.id] || 0;
-            const isActive = gameState.currentPlayer === opp.id;
-            return (
-              <div key={opp.id} className="opponent-seat" style={pos}>
-                <div className={`opponent-name ${isActive ? 'active-player' : ''} ${!opp.connected ? 'disconnected' : ''}`}>
-                  {!opp.connected && '⚡ '}{opp.name}
-                  {isBidding && isActive && ' 🤔'}
-                  {isPlaying && isActive && ' 🃏'}
-                </div>
-                <div className="opponent-bid-badge">
-                  {oppBid !== undefined
-                    ? `${oppBid} / ${oppTricks}`
-                    : isBidding ? 'bidding...' : ''}
-                </div>
-                <div className="opponent-cards">
-                  {Array.from({ length: gameState.currentCards || 1 }).map((_, ci) => (
-                    <Card key={ci} card={{ suit: '♠', rank: 'A' }} faceDown small />
-                  ))}
-                </div>
-                {/* Host kick button — lobby only */}
-                {isHost && gameState.state === 'lobby' && opp.id !== myId && (
-                  <button className="kick-btn" onClick={() => handleKick(opp.id)} title="Remove player">✕</button>
-                )}
-              </div>
-            );
-          })}
-        </div>
-
-        {/* Trick area */}
-        <div className="trick-area">
-          {gameState.currentTrick.map((t, i) => (
-            <div key={i} className="trick-card-wrapper"
-              style={getTrickCardPosition(i, gameState.players.length)}>
-              <Card card={t.card} small />
-            </div>
-          ))}
-          {trickWon && (
-            <div className="trick-won-overlay">
-              <div className="trick-won-text">{getTrickWinnerName()} wins! 🎉</div>
+        <div className="gt-topbar-right">
+          {trumpSuit && (
+            <div className="gt-hukam-badge" style={{ background: SUIT_COLOR[trumpSuit] }}>
+              <span className="gt-hukam-suit">{trumpSuit}</span>
+              <span className="gt-hukam-label">HUKAM</span>
             </div>
           )}
         </div>
       </div>
 
-      {/* ── Sidebar ── */}
-      <div className="gt-sidebar">
-        <div className="sidebar-scores">
-          <h3>Scores</h3>
-          {gameState.players.map(p => {
-            const bid = gameState.bids[p.id];
-            const tricks = gameState.tricks[p.id] || 0;
+      {/* ── Turn timer ── */}
+      {timeLeft !== null && (
+        <div className="gt-timer-bar">
+          <div
+            className="gt-timer-fill"
+            style={{ width: `${timerPct}%`, background: timerColor }}
+          />
+        </div>
+      )}
+
+      {/* ── Main table ── */}
+      <div className="gt-table">
+
+        {/* Diamond felt background */}
+        <div className="gt-felt-diamond" />
+
+        {/* ── Top player ── */}
+        {positionedOpponents.filter(o => o.position === 'top').map(opp => (
+          <PlayerSeat
+            key={opp.id}
+            player={opp}
+            position="top"
+            bid={gameState.bids[opp.id]}
+            tricks={gameState.tricks[opp.id] || 0}
+            isActive={gameState.currentPlayer === opp.id}
+            isBidding={isBidding}
+            cardCount={gameState.currentCards || 1}
+            isHost={isHost}
+            myId={myId}
+            onKick={handleKick}
+          />
+        ))}
+
+        {/* ── Left player ── */}
+        {positionedOpponents.filter(o => o.position === 'left').map(opp => (
+          <PlayerSeat
+            key={opp.id}
+            player={opp}
+            position="left"
+            bid={gameState.bids[opp.id]}
+            tricks={gameState.tricks[opp.id] || 0}
+            isActive={gameState.currentPlayer === opp.id}
+            isBidding={isBidding}
+            cardCount={gameState.currentCards || 1}
+            isHost={isHost}
+            myId={myId}
+            onKick={handleKick}
+          />
+        ))}
+
+        {/* ── Right player ── */}
+        {positionedOpponents.filter(o => o.position === 'right').map(opp => (
+          <PlayerSeat
+            key={opp.id}
+            player={opp}
+            position="right"
+            bid={gameState.bids[opp.id]}
+            tricks={gameState.tricks[opp.id] || 0}
+            isActive={gameState.currentPlayer === opp.id}
+            isBidding={isBidding}
+            cardCount={gameState.currentCards || 1}
+            isHost={isHost}
+            myId={myId}
+            onKick={handleKick}
+          />
+        ))}
+
+        {/* ── Center area: trick cards or status ── */}
+        <div className="gt-center">
+          {showBootAnim ? (
+            <div className="gt-boot-anim">
+              <div className="gt-boot-text">Collecting Boot Amount..</div>
+              <div className="gt-boot-coins">🪙</div>
+            </div>
+          ) : (
+            <div className="gt-trick-area">
+              {gameState.currentTrick.map((t, i) => (
+                <div
+                  key={i}
+                  className="gt-trick-card"
+                  style={getTrickCardPosition(i, gameState.players.length)}
+                >
+                  <Card card={t.card} small />
+                </div>
+              ))}
+              {trickWon && (
+                <div className="gt-trick-won">
+                  <span>{getTrickWinnerName()} wins! 🎉</span>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* ── Bottom: my seat ── */}
+        <div className="gt-my-seat">
+          {/* My bid speech bubble */}
+          {myBid !== undefined && (
+            <div className="gt-my-bid-bubble">
+              {isBidding ? `I Bid ${myBid}` : `Bid: ${myBid} · Tricks: ${myTricks}`}
+            </div>
+          )}
+          {isMyBidTurn && (
+            <div className="gt-my-bid-bubble waiting">Waiting to bid...</div>
+          )}
+
+          {/* My avatar */}
+          <div className={`gt-avatar-wrap ${gameState.currentPlayer === myId ? 'active' : ''}`}>
+            <div className="gt-avatar gt-avatar-me">
+              <span className="gt-avatar-initial">{me?.name?.[0]?.toUpperCase() || '?'}</span>
+            </div>
+            <div className="gt-player-name">{me?.name || 'You'}</div>
+            <div className="gt-player-coins">
+              <span className="gt-coin-icon-sm">🪙</span>
+              {formatCoins(me?.score || 0)}
+            </div>
+          </div>
+        </div>
+
+        {/* ── My hand cards ── */}
+        <div className="gt-my-hand">
+          {/* Lead suit hint */}
+          {isMyPlayTurn && gameState.leadSuit && myHand.some(c => c.suit === gameState.leadSuit) && (
+            <div className="gt-lead-hint">
+              Must play <span style={{ color: ['♥','♦'].includes(gameState.leadSuit) ? '#ef4444' : '#fff' }}>
+                {gameState.leadSuit}
+              </span>
+            </div>
+          )}
+          {myHand.map((card, i) => {
+            const legality = getCardLegality(card);
+            const isIllegal = legality === 'illegal';
+            const isDisabled = legality === 'disabled';
             return (
-              <div key={p.id} className={`score-row ${p.id === myId ? 'me' : ''} ${!p.connected ? 'offline' : ''}`}>
-                <span className="sname">{!p.connected ? '⚡ ' : ''}{p.name}</span>
-                {bid !== undefined && <span className="sbid">{bid}/{tricks}</span>}
-                <span className="stotal">{p.score}</span>
-                {isHost && gameState.state === 'lobby' && p.id !== myId && (
-                  <button className="kick-btn-sm" onClick={() => handleKick(p.id)}>✕</button>
-                )}
-              </div>
+              <Card
+                key={`${card.suit}-${card.rank}-${i}`}
+                card={card}
+                faceDown={false}
+                onClick={(!isDisabled && !isIllegal) ? () => handlePlayCard(card) : undefined}
+                disabled={isDisabled || isIllegal}
+                glow={isMyPlayTurn && !isIllegal}
+                style={{
+                  animationDelay: `${i * 0.05}s`,
+                  ...(isIllegal ? { opacity: 0.35, filter: 'grayscale(60%)' } : {})
+                }}
+              />
             );
           })}
         </div>
 
-        <div className="sidebar-chat">
-          <h3>Chat</h3>
-          <div className="chat-messages" ref={chatRef}>
-            {gameState.chat.map(msg => (
-              <div key={msg.id} className="chat-msg">
-                <span className="cname">{msg.name}:</span>
-                <span className="ctext">{msg.message}</span>
-              </div>
-            ))}
-          </div>
-          <div className="chat-input-row">
-            <input className="input" placeholder="Say something..."
-              value={chatMsg} onChange={e => setChatMsg(e.target.value)}
-              onKeyDown={e => e.key === 'Enter' && sendChat()} maxLength={120} />
-            <button className="chat-send" onClick={sendChat}>➤</button>
-          </div>
-        </div>
       </div>
 
       {/* ── Bid panel ── */}
@@ -256,12 +300,43 @@ export default function GameTable({ socket, myId, roomId, gameState, trickWon, s
         />
       )}
 
-      {/* ── Round end ── */}
+      {/* ── Right scorecard ── */}
+      <div className="gt-scorecard">
+        <div className="gt-scorecard-title">SCORES</div>
+        {[...gameState.players]
+          .sort((a, b) => b.score - a.score)
+          .map((p, rankIdx) => {
+            const bid    = gameState.bids[p.id];
+            const tricks = gameState.tricks[p.id] || 0;
+            const isMe   = p.id === myId;
+            const isActive = gameState.currentPlayer === p.id;
+            const rank = rankIdx + 1;
+            const rankEmoji = rank === 1 ? '🥇' : rank === 2 ? '🥈' : rank === 3 ? '🥉' : `#${rank}`;
+            return (
+              <div key={p.id} className={`gt-scorecard-row ${isMe ? 'me' : ''} ${isActive ? 'active' : ''} ${!p.connected ? 'offline' : ''}`}>
+                <span className="gt-sc-rank">{rankEmoji}</span>
+                <div className="gt-sc-name">
+                  {isActive && <span className="gt-sc-dot" />}
+                  {!p.connected && '⚡ '}
+                  {p.name}
+                </div>
+                <div className="gt-sc-right">
+                  {bid !== undefined && (
+                    <span className="gt-sc-bid">{bid}/{tricks}</span>
+                  )}
+                  <span className="gt-sc-total">{p.score}</span>
+                </div>
+              </div>
+            );
+          })}
+      </div>
+
+      {/* ── Round end overlay ── */}
       {gameState.state === 'roundEnd' && (
-        <div className="round-end-overlay">
-          <div className="round-end-panel">
+        <div className="gt-round-end-overlay">
+          <div className="gt-round-end-panel">
             <h2>Round {gameState.round} Complete</h2>
-            <table className="round-score-table">
+            <table className="gt-score-table">
               <thead>
                 <tr><th>Player</th><th>Bid</th><th>Tricks</th><th>Points</th><th>Total</th></tr>
               </thead>
@@ -281,10 +356,45 @@ export default function GameTable({ socket, myId, roomId, gameState, trickWon, s
             </table>
             {isHost
               ? <button className="btn btn-primary" onClick={handleNextRound}>Next Round ▶</button>
-              : <p className="waiting-msg">Waiting for host...</p>
+              : <p className="gt-waiting-msg">Waiting for host...</p>
             }
           </div>
         </div>
+      )}
+    </div>
+  );
+}
+
+/* ── Player Seat Component ── */
+function PlayerSeat({ player, position, bid, tricks, isActive, isBidding, cardCount, isHost, myId, onKick }) {
+  const initials = player.name?.[0]?.toUpperCase() || '?';
+
+  return (
+    <div className={`gt-player-seat gt-seat-${position}`}>
+      <div className={`gt-avatar-wrap ${isActive ? 'active' : ''} ${!player.connected ? 'offline' : ''}`}>
+        <div className="gt-avatar">
+          <span className="gt-avatar-initial">{initials}</span>
+        </div>
+        <div className="gt-player-name">
+          {!player.connected && '⚡ '}{player.name}
+        </div>
+        <div className="gt-player-coins">
+          <span className="gt-coin-icon-sm">🪙</span>
+          {bid !== undefined
+            ? `${bid} / ${tricks}`
+            : isBidding ? 'bidding...' : String(player.score || 0)}
+        </div>
+      </div>
+
+      {/* Face-down cards */}
+      <div className={`gt-opp-cards gt-opp-cards-${position}`}>
+        {Array.from({ length: Math.min(cardCount, 5) }).map((_, ci) => (
+          <Card key={ci} card={{ suit: '♠', rank: 'A' }} faceDown small />
+        ))}
+      </div>
+
+      {isHost && player.id !== myId && (
+        <button className="gt-kick-btn" onClick={() => onKick(player.id)}>✕</button>
       )}
     </div>
   );

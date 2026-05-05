@@ -1,0 +1,176 @@
+/* ── Bid Panel — Mobile Card Game Style ── */
+
+.bid-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  animation: fadeIn 0.25s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+.bid-panel-mobile {
+  position: relative;
+  pointer-events: all;
+  background: linear-gradient(135deg, #f5f0e8 0%, #e8dcc8 100%);
+  border-radius: 24px;
+  padding: 0;
+  width: 90%;
+  max-width: 520px;
+  box-shadow: 0 8px 40px rgba(0, 0, 0, 0.55);
+  overflow: hidden;
+  animation: popIn 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes popIn {
+  from { opacity: 0; transform: scale(0.75); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+/* Purple ribbon header */
+.bid-title-ribbon {
+  position: relative;
+  background: linear-gradient(135deg, #a855f7 0%, #7c3aed 100%);
+  padding: 16px 24px;
+  text-align: center;
+  font-family: 'Cinzel', serif;
+  font-size: 22px;
+  font-weight: 800;
+  color: #fff;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+  letter-spacing: 2px;
+  clip-path: polygon(
+    0 0,
+    100% 0,
+    100% calc(100% - 12px),
+    calc(100% - 20px) 100%,
+    20px 100%,
+    0 calc(100% - 12px)
+  );
+}
+
+.bid-title-ribbon::before,
+.bid-title-ribbon::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 40px;
+  height: 40px;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23fbbf24'%3E%3Cpath d='M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z'/%3E%3C/svg%3E") center/contain no-repeat;
+  opacity: 0.9;
+}
+.bid-title-ribbon::before { left: 16px; }
+.bid-title-ribbon::after { right: 16px; }
+
+/* Grid container */
+.bid-grid-container {
+  padding: 24px 20px 20px;
+}
+
+.bid-forbidden-notice {
+  text-align: center;
+  font-size: 13px;
+  color: #dc2626;
+  background: rgba(220, 38, 38, 0.1);
+  border: 1px solid rgba(220, 38, 38, 0.3);
+  border-radius: 12px;
+  padding: 8px 12px;
+  margin-bottom: 14px;
+  font-weight: 600;
+}
+
+/* Bid number grid */
+.bid-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 10px;
+  margin-bottom: 4px;
+}
+
+.bid-tile {
+  aspect-ratio: 1;
+  border-radius: 50%;
+  border: 3px solid #d4a574;
+  background: linear-gradient(135deg, #f5e6d3 0%, #e8d4b8 100%);
+  color: #5a4a3a;
+  font-size: 20px;
+  font-weight: 800;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.15),
+              inset 0 1px 2px rgba(255, 255, 255, 0.5);
+  position: relative;
+}
+
+.bid-tile::before {
+  content: '';
+  position: absolute;
+  inset: 4px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 30% 30%, rgba(255, 255, 255, 0.4), transparent 60%);
+  pointer-events: none;
+}
+
+.bid-tile:hover:not(.forbidden) {
+  transform: scale(1.15);
+  border-color: #f59e0b;
+  background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+  box-shadow: 0 6px 16px rgba(245, 158, 11, 0.4),
+              inset 0 1px 3px rgba(255, 255, 255, 0.6);
+}
+
+.bid-tile:active:not(.forbidden) {
+  transform: scale(1.05);
+}
+
+.bid-tile.forbidden {
+  opacity: 0.3;
+  cursor: not-allowed;
+  border-color: #dc2626;
+  color: #dc2626;
+  background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%);
+}
+
+/* Re-Deal button */
+.redeal-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: calc(100% - 40px);
+  margin: 16px 20px 20px;
+  padding: 14px 24px;
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  border: none;
+  border-radius: 16px;
+  color: #fff;
+  font-size: 16px;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.4);
+  transition: all 0.2s;
+}
+
+.redeal-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(16, 185, 129, 0.5);
+}
+
+.redeal-btn:active {
+  transform: translateY(0);
+}
+
+.redeal-icon {
+  font-size: 20px;
+}
+
+/* Animations already defined above (slideUp) */
+

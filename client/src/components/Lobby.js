@@ -27,7 +27,7 @@ export default function Lobby({ socket, myId, roomId, gameState, showToast }) {
     if (inviteRoom && name.trim() && myId && !joined) {
       socket.emit('joinRoom', { roomId: inviteRoom.toUpperCase(), name: name.trim() });
     }
-  }, [myId]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [myId]); // eslint-disable-line
 
   useEffect(() => {
     if (roomId) setJoined(true);

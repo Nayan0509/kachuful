@@ -1,4 +1,6 @@
-/* ── Bid Panel — Mobile Card Game Style ── */
+/* ══════════════════════════════════════════════
+   Kachuful — Bid Panel (Enterprise)
+   ══════════════════════════════════════════════ */
 
 .bid-overlay {
   position: fixed;
@@ -7,170 +9,153 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  pointer-events: none;
-  animation: fadeIn 0.25s ease;
+  background: rgba(0, 0, 0, 0.55);
+  backdrop-filter: blur(6px);
+  animation: fadeIn 0.2s ease;
 }
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 
-@keyframes fadeIn {
-  from { opacity: 0; }
-  to   { opacity: 1; }
-}
-
-.bid-panel-mobile {
-  position: relative;
-  pointer-events: all;
-  background: linear-gradient(135deg, #f5f0e8 0%, #e8dcc8 100%);
-  border-radius: 24px;
+.bid-panel {
+  background: linear-gradient(160deg, #0f1e36 0%, #1a2e50 100%);
+  border: 1px solid rgba(240, 192, 64, 0.35);
+  border-radius: 22px;
   padding: 0;
-  width: 90%;
-  max-width: 520px;
-  box-shadow: 0 8px 40px rgba(0, 0, 0, 0.55);
+  width: 92%;
+  max-width: 500px;
+  box-shadow: 0 10px 50px rgba(0, 0, 0, 0.7), 0 0 0 1px rgba(240,192,64,0.1);
   overflow: hidden;
-  animation: popIn 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  animation: popIn 0.32s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+@keyframes popIn { from { opacity: 0; transform: scale(0.78); } to { opacity: 1; transform: scale(1); } }
+
+/* ── Header ── */
+.bid-header {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 18px 20px 16px;
+  background: rgba(240, 192, 64, 0.07);
+  border-bottom: 1px solid rgba(240, 192, 64, 0.15);
 }
 
-@keyframes popIn {
-  from { opacity: 0; transform: scale(0.75); }
-  to   { opacity: 1; transform: scale(1); }
+/* Trump info block */
+.bid-trump-block {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(0,0,0,0.35);
+  border: 1px solid rgba(240,192,64,0.25);
+  border-radius: 10px;
+  padding: 8px 12px;
+  flex-shrink: 0;
+}
+.bid-trump-tag {
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: rgba(240,192,64,0.6);
+}
+.bid-trump-sym { font-size: 24px; }
+.bid-trump-sym.red { color: #dc2626; }
+.bid-trump-sym.blk { color: #e2e8f0; }
+.bid-trump-rnk {
+  font-size: 15px;
+  font-weight: 800;
+  color: #fbbf24;
 }
 
-/* Purple ribbon header */
-.bid-title-ribbon {
-  position: relative;
-  background: linear-gradient(135deg, #a855f7 0%, #7c3aed 100%);
-  padding: 16px 24px;
-  text-align: center;
+/* Title block (centre) */
+.bid-title-block { flex: 1; text-align: center; }
+.bid-title {
   font-family: 'Cinzel', serif;
-  font-size: 22px;
+  font-size: 18px;
   font-weight: 800;
   color: #fff;
-  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
-  letter-spacing: 2px;
-  clip-path: polygon(
-    0 0,
-    100% 0,
-    100% calc(100% - 12px),
-    calc(100% - 20px) 100%,
-    20px 100%,
-    0 calc(100% - 12px)
-  );
+  letter-spacing: 1px;
+}
+.bid-sub {
+  font-size: 11px;
+  color: rgba(255,255,255,0.4);
+  margin-top: 2px;
 }
 
-.bid-title-ribbon::before,
-.bid-title-ribbon::after {
-  content: '';
-  position: absolute;
-  top: 50%;
-  transform: translateY(-50%);
-  width: 40px;
-  height: 40px;
-  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23fbbf24'%3E%3Cpath d='M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z'/%3E%3C/svg%3E") center/contain no-repeat;
-  opacity: 0.9;
-}
-.bid-title-ribbon::before { left: 16px; }
-.bid-title-ribbon::after { right: 16px; }
+/* Trump card thumbnail */
+.bid-trump-card-wrap { flex-shrink: 0; }
 
-/* Grid container */
-.bid-grid-container {
-  padding: 24px 20px 20px;
-}
-
-.bid-forbidden-notice {
-  text-align: center;
+/* ── Forbidden notice ── */
+.bid-forbidden {
+  margin: 14px 20px 0;
+  padding: 8px 14px;
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.35);
+  border-radius: 10px;
   font-size: 13px;
-  color: #dc2626;
-  background: rgba(220, 38, 38, 0.1);
-  border: 1px solid rgba(220, 38, 38, 0.3);
-  border-radius: 12px;
-  padding: 8px 12px;
-  margin-bottom: 14px;
   font-weight: 600;
+  color: #fca5a5;
+}
+.bid-forbidden-why {
+  font-size: 11px;
+  font-weight: 400;
+  color: rgba(252, 165, 165, 0.65);
 }
 
-/* Bid number grid */
+/* ── Bid grid ── */
 .bid-grid {
   display: grid;
-  grid-template-columns: repeat(7, 1fr);
+  grid-template-columns: repeat(auto-fill, minmax(56px, 1fr));
   gap: 10px;
-  margin-bottom: 4px;
+  padding: 18px 20px;
 }
 
 .bid-tile {
   aspect-ratio: 1;
   border-radius: 50%;
-  border: 3px solid #d4a574;
-  background: linear-gradient(135deg, #f5e6d3 0%, #e8d4b8 100%);
-  color: #5a4a3a;
-  font-size: 20px;
-  font-weight: 800;
+  border: 2.5px solid rgba(240, 192, 64, 0.4);
+  background: linear-gradient(145deg, rgba(240,192,64,0.12), rgba(240,192,64,0.05));
+  color: #fbbf24;
+  font-size: 22px;
+  font-weight: 900;
+  font-family: 'Cinzel', serif;
   cursor: pointer;
-  transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
-  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.15),
-              inset 0 1px 2px rgba(255, 255, 255, 0.5);
+  transition: all 0.18s cubic-bezier(0.34, 1.56, 0.64, 1);
+  box-shadow: 0 3px 10px rgba(0,0,0,0.25), inset 0 1px 0 rgba(255,255,255,0.08);
   position: relative;
+  overflow: hidden;
 }
 
+/* Shine overlay */
 .bid-tile::before {
   content: '';
   position: absolute;
-  inset: 4px;
+  inset: 0;
   border-radius: 50%;
-  background: radial-gradient(circle at 30% 30%, rgba(255, 255, 255, 0.4), transparent 60%);
+  background: radial-gradient(circle at 30% 30%, rgba(255,255,255,0.15), transparent 55%);
   pointer-events: none;
 }
 
 .bid-tile:hover:not(.forbidden) {
-  transform: scale(1.15);
-  border-color: #f59e0b;
-  background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
-  box-shadow: 0 6px 16px rgba(245, 158, 11, 0.4),
-              inset 0 1px 3px rgba(255, 255, 255, 0.6);
+  transform: scale(1.18);
+  border-color: #fbbf24;
+  background: linear-gradient(145deg, rgba(240,192,64,0.28), rgba(240,192,64,0.15));
+  box-shadow: 0 6px 20px rgba(240,192,64,0.4), inset 0 1px 0 rgba(255,255,255,0.15);
+  color: #fff;
 }
-
-.bid-tile:active:not(.forbidden) {
-  transform: scale(1.05);
-}
+.bid-tile:active:not(.forbidden) { transform: scale(1.06); }
 
 .bid-tile.forbidden {
-  opacity: 0.3;
+  opacity: 0.28;
   cursor: not-allowed;
-  border-color: #dc2626;
-  color: #dc2626;
-  background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%);
+  border-color: rgba(239,68,68,0.4);
+  color: #fca5a5;
+  background: rgba(239,68,68,0.08);
+  transform: none;
 }
 
-/* Re-Deal button */
-.redeal-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  width: calc(100% - 40px);
-  margin: 16px 20px 20px;
-  padding: 14px 24px;
-  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-  border: none;
-  border-radius: 16px;
-  color: #fff;
-  font-size: 16px;
-  font-weight: 700;
-  cursor: pointer;
-  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.4);
-  transition: all 0.2s;
+/* ── Hint ── */
+.bid-hint {
+  text-align: center;
+  font-size: 11px;
+  color: rgba(255,255,255,0.25);
+  padding: 0 20px 16px;
 }
-
-.redeal-btn:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(16, 185, 129, 0.5);
-}
-
-.redeal-btn:active {
-  transform: translateY(0);
-}
-
-.redeal-icon {
-  font-size: 20px;
-}
-
-/* Animations already defined above (slideUp) */
-

@@ -1,3 +1,7 @@
+/* ══════════════════════════════════════════════
+   Kachuful — Premium Playing Card
+   ══════════════════════════════════════════════ */
+
 :root {
   --cw: 72px;
   --ch: 100px;
@@ -6,93 +10,147 @@
 .card {
   width: var(--cw);
   height: var(--ch);
-  background: #fff;
-  border-radius: 8px;
-  border: 1.5px solid #ddd;
+  background: #fffef8;
+  border-radius: 9px;
+  border: 1px solid #d1cfc6;
   position: relative;
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 3px 10px rgba(0,0,0,.35);
-  transition: transform .18s cubic-bezier(.34,1.56,.64,1), box-shadow .18s;
+  box-shadow:
+    0 2px 6px rgba(0,0,0,0.2),
+    inset 0 1px 0 rgba(255,255,255,0.9),
+    inset 0 -1px 0 rgba(0,0,0,0.06);
+  transition:
+    transform 0.18s cubic-bezier(0.34,1.56,0.64,1),
+    box-shadow 0.18s,
+    opacity 0.18s;
   flex-shrink: 0;
+  cursor: default;
+  user-select: none;
 }
 
-.card.small { --cw: 52px; --ch: 72px; font-size: 11px; }
+/* Small variant (for trick/opponent stacks) */
+.card.small {
+  --cw: 48px;
+  --ch: 66px;
+}
 
+/* ── Suit colours ── */
+.card.red  .card-rank,
+.card.red  .card-suit-sm,
+.card.red  .card-suit-lg  { color: #cc1111; }
+
+.card.black .card-rank,
+.card.black .card-suit-sm,
+.card.black .card-suit-lg { color: #0d0d0d; }
+
+/* ── Corners ── */
+.card-corner {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  line-height: 1.1;
+}
+.card-corner.top-left    { top: 4px;  left: 5px; }
+.card-corner.bottom-right{ bottom: 4px; right: 5px; transform: rotate(180deg); }
+
+.card-rank    { font-size: 13px; font-weight: 900; letter-spacing: -0.5px; }
+.card-suit-sm { font-size: 10px; line-height: 1; }
+
+.card.small .card-rank    { font-size: 10px; }
+.card.small .card-suit-sm { font-size: 8px; }
+
+/* ── Center suit ── */
+.card-center { display: flex; align-items: center; justify-content: center; }
+.card-suit-lg { font-size: 30px; }
+.card.small .card-suit-lg { font-size: 20px; }
+
+/* ── Clickable / hover ── */
 .card.clickable { cursor: pointer; }
 .card.clickable:hover {
-  transform: translateY(-14px) scale(1.06);
-  box-shadow: 0 12px 28px rgba(0,0,0,.5);
+  transform: translateY(-14px) scale(1.07);
+  box-shadow:
+    0 16px 32px rgba(0,0,0,0.45),
+    inset 0 1px 0 rgba(255,255,255,0.9);
   z-index: 10;
 }
 
+/* ── Selected ── */
 .card.selected {
-  transform: translateY(-20px) scale(1.08);
-  box-shadow: 0 0 0 3px #f0c040, 0 14px 32px rgba(240,192,64,.4);
+  transform: translateY(-20px) scale(1.09);
+  box-shadow: 0 0 0 3px #fbbf24, 0 18px 36px rgba(240,192,64,0.4);
   z-index: 11;
 }
 
-.card.disabled { opacity: .45; cursor: not-allowed; }
+/* ── Disabled (not my turn) ── */
+.card.disabled {
+  opacity: 0.38;
+  cursor: not-allowed;
+  filter: saturate(0.4);
+}
 .card.disabled:hover { transform: none; }
 
+/* ── Illegal (wrong suit) ── */
+.card.illegal {
+  opacity: 0.28;
+  cursor: not-allowed;
+  filter: grayscale(60%);
+}
+.card.illegal:hover { transform: none; }
+
+/* ── Glow (my turn, playable card) ── */
 .card.glow {
-  box-shadow: 0 0 0 3px #f0c040, 0 0 20px rgba(240,192,64,.6);
-  animation: cardGlow 1s infinite alternate;
+  box-shadow:
+    0 0 0 2.5px #fbbf24,
+    0 0 20px rgba(240,192,64,0.55),
+    0 2px 8px rgba(0,0,0,0.25);
+  animation: cardGlow 1.3s ease-in-out infinite alternate;
 }
 @keyframes cardGlow {
-  from { box-shadow: 0 0 0 2px #f0c040, 0 0 12px rgba(240,192,64,.4); }
-  to   { box-shadow: 0 0 0 3px #f0c040, 0 0 28px rgba(240,192,64,.7); }
+  from { box-shadow: 0 0 0 2px #fbbf24, 0 0 12px rgba(240,192,64,0.35), 0 2px 8px rgba(0,0,0,0.2); }
+  to   { box-shadow: 0 0 0 3.5px #fbbf24, 0 0 28px rgba(240,192,64,0.7), 0 2px 8px rgba(0,0,0,0.25); }
 }
 
-/* Corners */
-.card-corner {
-  position: absolute;
-  display: flex; flex-direction: column; align-items: center;
-  line-height: 1;
-  font-weight: 700;
-}
-.card-corner.top-left { top: 5px; left: 6px; }
-.card-corner.bottom-right { bottom: 5px; right: 6px; transform: rotate(180deg); }
-
-.card-rank { font-size: 13px; font-weight: 800; }
-.card-suit  { font-size: 11px; }
-
-.card.red  .card-rank,
-.card.red  .card-suit,
-.card.red  .card-center { color: #d42020; }
-
-.card.black .card-rank,
-.card.black .card-suit,
-.card.black .card-center { color: #1a1a1a; }
-
-.card-center { font-size: 26px; }
-.card.small .card-center { font-size: 18px; }
-
-/* Face down */
+/* ── Face-down back design ── */
 .card-back {
-  width: 100%; height: 100%;
-  border-radius: 7px;
-  background: linear-gradient(135deg, #1a3a6b, #0d2244);
-  display: flex; align-items: center; justify-content: center;
+  width: 100%;
+  height: 100%;
+  border-radius: 8px;
+  background: linear-gradient(145deg, #1e3a6e, #0c1e44);
+  padding: 5px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.card-back-inner {
+  width: 100%;
+  height: 100%;
+  border-radius: 4px;
+  background: linear-gradient(145deg, #17306a, #0a1b3f);
+  border: 1.5px solid rgba(240, 192, 64, 0.35);
+  display: flex;
+  align-items: center;
+  justify-content: center;
   overflow: hidden;
 }
 .card-back-pattern {
-  width: 85%; height: 85%;
-  border: 2px solid rgba(240,192,64,.4);
-  border-radius: 4px;
-  background: repeating-linear-gradient(
-    45deg,
-    rgba(240,192,64,.08) 0px,
-    rgba(240,192,64,.08) 2px,
-    transparent 2px,
-    transparent 8px
-  );
+  width: 82%;
+  height: 82%;
+  background:
+    repeating-linear-gradient(
+      45deg,
+      rgba(240,192,64,0.12) 0px,
+      rgba(240,192,64,0.12) 1px,
+      transparent 1px,
+      transparent 6px
+    ),
+    repeating-linear-gradient(
+      -45deg,
+      rgba(240,192,64,0.12) 0px,
+      rgba(240,192,64,0.12) 1px,
+      transparent 1px,
+      transparent 6px
+    );
 }
-
-/* Deal animation */
-@keyframes dealCard {
-  from { opacity: 0; transform: translateY(-60px) rotate(-8deg) scale(.8); }
-  to   { opacity: 1; transform: translateY(0) rotate(0) scale(1); }
-}
-.card.deal { animation: dealCard .4s cubic-bezier(.34,1.56,.64,1) both; }

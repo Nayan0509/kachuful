@@ -1,27 +1,56 @@
+/* ══════════════════════════════════════════════
+   Kachuful — Enterprise Design System
+   ══════════════════════════════════════════════ */
+
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 :root {
-  --green:   #1a6b3c;
-  --green2:  #145530;
-  --felt:    #0f4d2a;
+  /* Colour tokens */
   --gold:    #f0c040;
   --gold2:   #c8960a;
-  --red:     #e03030;
-  --black:   #1a1a2e;
+  --gold3:   #fbbf24;
+  --red:     #dc2626;
+  --green:   #10b981;
+  --purple:  #9333ea;
   --white:   #f5f0e8;
-  --card-w:  72px;
-  --card-h:  100px;
-  --radius:  10px;
-  --shadow:  0 4px 24px rgba(0,0,0,.5);
+  --bg:      #060b18;
+  --surface: rgba(8, 18, 38, 0.9);
+
+  /* Typography */
+  --font-body:  'Inter', sans-serif;
+  --font-serif: 'Cinzel', serif;
+
+  /* Card dimensions */
+  --cw: 72px;
+  --ch: 100px;
+
+  /* Spacing */
+  --radius-sm: 8px;
+  --radius:    12px;
+  --radius-lg: 20px;
+
+  /* Shadows */
+  --shadow-sm: 0 2px 8px rgba(0,0,0,0.3);
+  --shadow:    0 4px 24px rgba(0,0,0,0.5);
+  --shadow-lg: 0 8px 48px rgba(0,0,0,0.65);
+
+  /* Gold glow */
+  --glow-gold: 0 0 0 2px var(--gold), 0 0 20px rgba(240,192,64,0.5);
 }
 
-html, body, #root { height: 100%; width: 100%; overflow: hidden; }
+html, body, #root {
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
+}
 
 body {
-  font-family: 'Inter', sans-serif;
-  background: #0a1628;
+  font-family: var(--font-body);
+  background: var(--bg);
   color: var(--white);
   user-select: none;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 .app {
@@ -31,62 +60,95 @@ body {
   overflow: hidden;
 }
 
-/* ── Starfield ── */
+/* ════════════════════════════════════════
+   ANIMATED STARFIELD BACKGROUND
+   ════════════════════════════════════════ */
 .stars, .stars2 {
-  position: fixed; inset: 0; pointer-events: none; z-index: 0;
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
 }
 .stars {
-  background: transparent url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='400'%3E%3Ccircle cx='50' cy='80' r='1' fill='white' opacity='.6'/%3E%3Ccircle cx='120' cy='30' r='1.2' fill='white' opacity='.5'/%3E%3Ccircle cx='200' cy='150' r='.8' fill='white' opacity='.7'/%3E%3Ccircle cx='300' cy='60' r='1' fill='white' opacity='.4'/%3E%3Ccircle cx='350' cy='200' r='1.3' fill='white' opacity='.6'/%3E%3Ccircle cx='80' cy='300' r='.9' fill='white' opacity='.5'/%3E%3Ccircle cx='250' cy='350' r='1' fill='white' opacity='.6'/%3E%3Ccircle cx='380' cy='320' r='.7' fill='white' opacity='.4'/%3E%3C/svg%3E") repeat;
-  animation: twinkle 8s infinite alternate;
+  background: transparent url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='600' height='600'%3E%3Ccircle cx='50' cy='80' r='1' fill='white' opacity='.6'/%3E%3Ccircle cx='120' cy='30' r='1.2' fill='white' opacity='.5'/%3E%3Ccircle cx='200' cy='150' r='.8' fill='white' opacity='.7'/%3E%3Ccircle cx='300' cy='60' r='1' fill='white' opacity='.4'/%3E%3Ccircle cx='350' cy='200' r='1.3' fill='white' opacity='.6'/%3E%3Ccircle cx='80' cy='300' r='.9' fill='white' opacity='.5'/%3E%3Ccircle cx='250' cy='350' r='1' fill='white' opacity='.6'/%3E%3Ccircle cx='450' cy='420' r='.7' fill='white' opacity='.4'/%3E%3Ccircle cx='520' cy='100' r='1.1' fill='white' opacity='.5'/%3E%3Ccircle cx='30' cy='480' r='.9' fill='white' opacity='.4'/%3E%3Ccircle cx='560' cy='320' r='1' fill='white' opacity='.6'/%3E%3C/svg%3E") repeat;
+  animation: starsTwinkle 9s ease-in-out infinite alternate;
 }
 .stars2 {
-  background: transparent url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='600' height='600'%3E%3Ccircle cx='100' cy='200' r='1' fill='white' opacity='.3'/%3E%3Ccircle cx='400' cy='100' r='1.5' fill='white' opacity='.4'/%3E%3Ccircle cx='500' cy='400' r='1' fill='white' opacity='.3'/%3E%3Ccircle cx='150' cy='500' r='1.2' fill='white' opacity='.5'/%3E%3Ccircle cx='550' cy='250' r='.8' fill='white' opacity='.4'/%3E%3C/svg%3E") repeat;
-  animation: twinkle 12s infinite alternate-reverse;
+  background: transparent url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='800' height='800'%3E%3Ccircle cx='100' cy='200' r='1' fill='white' opacity='.3'/%3E%3Ccircle cx='400' cy='100' r='1.5' fill='white' opacity='.4'/%3E%3Ccircle cx='600' cy='500' r='1' fill='white' opacity='.35'/%3E%3Ccircle cx='150' cy='600' r='1.2' fill='white' opacity='.45'/%3E%3Ccircle cx='700' cy='250' r='.8' fill='white' opacity='.4'/%3E%3Ccircle cx='250' cy='700' r='1' fill='white' opacity='.3'/%3E%3Ccircle cx='680' cy='680' r='1.1' fill='white' opacity='.35'/%3E%3C/svg%3E") repeat;
+  animation: starsTwinkle 14s ease-in-out infinite alternate-reverse;
 }
-@keyframes twinkle {
-  0%   { opacity: .6; }
-  100% { opacity: 1; }
+@keyframes starsTwinkle {
+  0%   { opacity: 0.5; }
+  50%  { opacity: 0.85; }
+  100% { opacity: 0.6; }
 }
 
-/* ── Buttons ── */
+/* ════════════════════════════════════════
+   BUTTONS
+   ════════════════════════════════════════ */
 .btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
   padding: 12px 28px;
   border: none;
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
+  font-family: var(--font-body);
   font-size: 15px;
-  font-weight: 600;
+  font-weight: 700;
   cursor: pointer;
-  transition: transform .15s, box-shadow .15s, filter .15s;
-  letter-spacing: .5px;
+  transition: transform 0.15s, box-shadow 0.15s, filter 0.15s, background 0.15s;
+  letter-spacing: 0.3px;
+  text-decoration: none;
 }
-.btn:active { transform: scale(.96); }
+.btn:active { transform: scale(0.96); }
+.btn:disabled, .btn.disabled {
+  opacity: 0.42;
+  cursor: not-allowed;
+  transform: none;
+  pointer-events: none;
+}
+
+/* Primary (gold) */
 .btn-primary {
   background: linear-gradient(135deg, var(--gold), var(--gold2));
   color: #1a1a1a;
-  box-shadow: 0 4px 16px rgba(240,192,64,.35);
+  box-shadow: 0 4px 18px rgba(240,192,64,0.35);
 }
-.btn-primary:hover { filter: brightness(1.1); box-shadow: 0 6px 24px rgba(240,192,64,.5); }
-.btn-secondary {
-  background: rgba(255,255,255,.1);
-  color: var(--white);
-  border: 1px solid rgba(255,255,255,.2);
+.btn-primary:hover:not(:disabled) {
+  filter: brightness(1.1);
+  box-shadow: 0 6px 28px rgba(240,192,64,0.52);
 }
-.btn-secondary:hover { background: rgba(255,255,255,.18); }
-.btn.disabled, .btn:disabled { opacity: .45; cursor: not-allowed; transform: none; }
 
+/* Secondary (ghost) */
+.btn-secondary {
+  background: rgba(255,255,255,0.09);
+  color: var(--white);
+  border: 1px solid rgba(255,255,255,0.18);
+}
+.btn-secondary:hover:not(:disabled) {
+  background: rgba(255,255,255,0.16);
+}
+
+/* ════════════════════════════════════════
+   INPUTS
+   ════════════════════════════════════════ */
 .input {
   width: 100%;
   padding: 12px 16px;
-  background: rgba(255,255,255,.08);
-  border: 1px solid rgba(255,255,255,.15);
-  border-radius: 8px;
+  background: rgba(255,255,255,0.07);
+  border: 1px solid rgba(255,255,255,0.14);
+  border-radius: var(--radius-sm);
   color: var(--white);
+  font-family: var(--font-body);
   font-size: 15px;
   outline: none;
-  transition: border-color .2s, box-shadow .2s;
+  transition: border-color 0.2s, box-shadow 0.2s, background 0.2s;
 }
 .input:focus {
   border-color: var(--gold);
-  box-shadow: 0 0 0 3px rgba(240,192,64,.2);
+  background: rgba(255,255,255,0.1);
+  box-shadow: 0 0 0 3px rgba(240,192,64,0.18);
 }
-.input::placeholder { color: rgba(255,255,255,.35); }
+.input::placeholder { color: rgba(255,255,255,0.3); }

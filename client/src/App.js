@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import socket from './socket';
 import Lobby from './components/Lobby';
 import GameTable from './components/GameTable';
@@ -13,9 +13,12 @@ export default function App() {
   const [roomId, setRoomId] = useState(null);
   const [toast, setToast] = useState(null);
   const [trickWon, setTrickWon] = useState(null);
+  const toastTimerRef = useRef(null);
 
   const showToast = useCallback((msg, type = 'info') => {
+    if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
     setToast({ msg, type, id: Date.now() });
+    toastTimerRef.current = setTimeout(() => setToast(null), 3000);
   }, []);
 
   useEffect(() => {
@@ -25,7 +28,6 @@ export default function App() {
       const newId = socket.id;
       setMyId(newId);
 
-      // Attempt rejoin if we have saved session
       const savedRoom = localStorage.getItem('kachuful_room');
       const savedPid  = localStorage.getItem('kachuful_pid');
       const savedName = localStorage.getItem('kachuful_name');
@@ -38,9 +40,11 @@ export default function App() {
       setRoomId(roomId);
       localStorage.setItem('kachuful_room', roomId);
     });
-    socket.on('roomJoined', ({ roomId }) => {
+
+    socket.on('roomJoined', ({ roomId, name }) => {
       setRoomId(roomId);
       localStorage.setItem('kachuful_room', roomId);
+      if (name) localStorage.setItem('kachuful_name', name);
     });
 
     socket.on('gameState', (state) => {
@@ -50,14 +54,13 @@ export default function App() {
       else setScreen('lobby');
     });
 
-    socket.on('trickWon', ({ winnerId, trick }) => {
-      setTrickWon({ winnerId, trick });
+    socket.on('trickWon', ({ winnerId, winnerName, trick }) => {
+      setTrickWon({ winnerId, winnerName, trick });
       setTimeout(() => setTrickWon(null), 1800);
     });
 
-    socket.on('autoActed', ({ playerId, action }) => {
-      // find player name from gameState if available
-      showToast(`⏱ Auto: ${action}`, 'info');
+    socket.on('autoActed', ({ playerId, playerName, action }) => {
+      showToast(`⏱ ${playerName || 'Player'}: ${action}`, 'info');
     });
 
     socket.on('kicked', ({ message }) => {

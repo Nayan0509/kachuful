@@ -7,6 +7,7 @@ export default function Card({
   card,
   onClick,
   disabled,
+  illegal,
   selected,
   faceDown,
   small,
@@ -16,35 +17,42 @@ export default function Card({
   if (!card) return null;
   const isRed = RED_SUITS.includes(card.suit);
 
+  const classes = [
+    'card',
+    isRed    ? 'red'       : 'black',
+    faceDown ? 'face-down' : '',
+    disabled ? 'disabled'  : '',
+    illegal  ? 'illegal'   : '',
+    selected ? 'selected'  : '',
+    small    ? 'small'     : '',
+    glow     ? 'glow'      : '',
+    onClick && !disabled && !illegal ? 'clickable' : ''
+  ].filter(Boolean).join(' ');
+
   return (
     <div
-      className={[
-        'card',
-        isRed ? 'red' : 'black',
-        faceDown ? 'face-down' : '',
-        disabled ? 'disabled' : '',
-        selected ? 'selected' : '',
-        small ? 'small' : '',
-        glow ? 'glow' : '',
-        onClick && !disabled ? 'clickable' : ''
-      ].filter(Boolean).join(' ')}
-      onClick={!disabled && onClick ? onClick : undefined}
+      className={classes}
+      onClick={onClick && !disabled && !illegal ? onClick : undefined}
       style={style}
     >
       {faceDown ? (
         <div className="card-back">
-          <div className="card-back-pattern" />
+          <div className="card-back-inner">
+            <div className="card-back-pattern" />
+          </div>
         </div>
       ) : (
         <>
           <div className="card-corner top-left">
             <span className="card-rank">{card.rank}</span>
-            <span className="card-suit">{card.suit}</span>
+            <span className="card-suit-sm">{card.suit}</span>
           </div>
-          <div className="card-center">{card.suit}</div>
+          <div className="card-center">
+            <span className="card-suit-lg">{card.suit}</span>
+          </div>
           <div className="card-corner bottom-right">
             <span className="card-rank">{card.rank}</span>
-            <span className="card-suit">{card.suit}</span>
+            <span className="card-suit-sm">{card.suit}</span>
           </div>
         </>
       )}

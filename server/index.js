@@ -28,7 +28,15 @@ const io = new Server(server, {
 const rooms = {};
 const turnTimers = {};
 
-const TURN_TIMEOUT = 15000;
+// Per-phase auto-act timeouts
+const BID_TIMEOUT  = 8000;   // 8s to choose a bid, else auto-bid 0 (or 1 if 0 forbidden)
+const PLAY_TIMEOUT = 5000;   // 5s to play a card, else auto-throw
+
+function timeoutForState(state) {
+  if (state === 'bidding') return BID_TIMEOUT;
+  if (state === 'playing') return PLAY_TIMEOUT;
+  return 0;
+}
 
 function clearTurnTimer(roomId) {
   if (turnTimers[roomId]) {
@@ -41,12 +49,15 @@ function startTurnTimer(roomId) {
   clearTurnTimer(roomId);
   const room = rooms[roomId];
   if (!room) return;
-  const deadline = Date.now() + TURN_TIMEOUT;
+  const duration = timeoutForState(room.state);
+  if (!duration) return;
+  const deadline = Date.now() + duration;
   turnTimers[roomId] = {
     deadline,
-    timer: setTimeout(() => autoAct(roomId), TURN_TIMEOUT)
+    duration,
+    timer: setTimeout(() => autoAct(roomId), duration)
   };
-  io.to(roomId).emit('turnTimer', { deadline, playerId: room.currentPlayer });
+  io.to(roomId).emit('turnTimer', { deadline, duration, playerId: room.currentPlayer });
 }
 
 function autoAct(roomId) {
@@ -137,7 +148,8 @@ function getPublicRoom(room) {
     currentPlayer: room.currentPlayer, dealerIndex: room.dealerIndex,
     scores: room.scores, chat: room.chat.slice(-50),
     forbiddenBid,
-    turnDeadline: timer ? timer.deadline : null
+    turnDeadline: timer ? timer.deadline : null,
+    turnDuration: timer ? timer.duration : null
   };
 }
 

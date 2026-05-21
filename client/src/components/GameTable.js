@@ -3,7 +3,9 @@ import Card from './Card';
 import BidPanel from './BidPanel';
 import '../styles/GameTable.css';
 
-const TURN_TIMEOUT = 15;
+// Fallback timeouts (used only if the server didn't broadcast turnDuration)
+const BID_TIMEOUT_SEC  = 8;
+const PLAY_TIMEOUT_SEC = 5;
 
 // Seat positions [left%, top%] within .gt-table for N opponents
 // Me is always at the bottom. Opponents are distributed around the top.
@@ -57,17 +59,17 @@ export default function GameTable({ socket, myId, roomId, gameState, trickWon, s
     return AVATAR_COLORS[idx % AVATAR_COLORS.length];
   };
 
-  // Countdown timer
+  // Countdown timer — ticks at 100ms for a smooth bar on the short play timer
   useEffect(() => {
     if (timerRef.current) clearInterval(timerRef.current);
     if (!gameState.turnDeadline) { setTimeLeft(null); return; }
     const tick = () => {
-      const left = Math.max(0, Math.ceil((gameState.turnDeadline - Date.now()) / 1000));
+      const left = Math.max(0, (gameState.turnDeadline - Date.now()) / 1000);
       setTimeLeft(left);
-      if (left === 0) clearInterval(timerRef.current);
+      if (left <= 0) clearInterval(timerRef.current);
     };
     tick();
-    timerRef.current = setInterval(tick, 250);
+    timerRef.current = setInterval(tick, 100);
     return () => clearInterval(timerRef.current);
   }, [gameState.turnDeadline, gameState.currentPlayer]);
 
@@ -97,8 +99,17 @@ export default function GameTable({ socket, myId, roomId, gameState, trickWon, s
   const handleBid       = (bid) => socket.emit('placeBid', { roomId, bid });
   const handleNextRound = ()    => socket.emit('nextRound', { roomId });
 
-  const timerPct   = timeLeft !== null ? (timeLeft / TURN_TIMEOUT) * 100 : 100;
-  const timerColor = timeLeft <= 5 ? '#ef4444' : timeLeft <= 10 ? '#f59e0b' : '#10b981';
+  // Pick the timer cap from server-provided duration if present; otherwise fall back per phase.
+  const timerCap = gameState.turnDuration
+    ? gameState.turnDuration / 1000
+    : (isBidding ? BID_TIMEOUT_SEC : PLAY_TIMEOUT_SEC);
+  const timerPct   = timeLeft !== null ? Math.min(100, (timeLeft / timerCap) * 100) : 100;
+  // Color thresholds scale with the cap: red in the last 30%, amber in the next 30%, green otherwise.
+  const timerColor = timeLeft <= timerCap * 0.3
+    ? '#ef4444'
+    : timeLeft <= timerCap * 0.6
+      ? '#f59e0b'
+      : '#10b981';
 
   const currentPlayerName = gameState.players.find(p => p.id === gameState.currentPlayer)?.name || '';
 
@@ -129,13 +140,26 @@ export default function GameTable({ socket, myId, roomId, gameState, trickWon, s
         </div>
 
         <div className="gt-topbar-right">
-          {gameState.trumpCard && (
-            <div className="gt-trump-pill">
+          {gameState.trumpCard ? (
+            // key forces a remount + replay of trumpPulse each round
+            <div
+              key={`trump-r${gameState.round}-${gameState.trumpCard.suit}${gameState.trumpCard.rank}`}
+              className="gt-trump-pill"
+              title={`Trump suit for round ${gameState.round}: ${gameState.trumpCard.suit}`}
+            >
               <span className="gt-trump-label-sm">TRUMP</span>
               <span className={`gt-trump-suit ${IS_RED(gameState.trumpCard.suit) ? 'red' : ''}`}>
                 {gameState.trumpCard.suit}
               </span>
               <span className="gt-trump-rank">{gameState.trumpCard.rank}</span>
+            </div>
+          ) : (
+            <div
+              key={`trump-r${gameState.round}-none`}
+              className="gt-trump-pill gt-trump-pill-none"
+              title="No-trump round"
+            >
+              <span className="gt-trump-label-sm">NO TRUMP</span>
             </div>
           )}
         </div>
@@ -151,7 +175,7 @@ export default function GameTable({ socket, myId, roomId, gameState, trickWon, s
             <span className="gt-timer-player" style={{ color: timerColor }}>
               {currentPlayerName}{gameState.currentPlayer === myId ? ' (You)' : ''}
             </span>
-            <span className="gt-timer-secs" style={{ color: timerColor }}>{timeLeft}s</span>
+            <span className="gt-timer-secs" style={{ color: timerColor }}>{Math.ceil(timeLeft)}s</span>
           </div>
         </div>
       )}

@@ -3,24 +3,24 @@
    ══════════════════════════════════════════════ */
 
 :root {
-  --cw: 72px;
-  --ch: 100px;
+  --cw: 84px;
+  --ch: 118px;
 }
 
 .card {
   width: var(--cw);
   height: var(--ch);
-  background: #fffef8;
-  border-radius: 9px;
-  border: 1px solid #d1cfc6;
+  background: #ffffff;
+  border-radius: 10px;
+  border: 1.5px solid #9aa0a6;
   position: relative;
   display: flex;
   align-items: center;
   justify-content: center;
   box-shadow:
-    0 2px 6px rgba(0,0,0,0.2),
-    inset 0 1px 0 rgba(255,255,255,0.9),
-    inset 0 -1px 0 rgba(0,0,0,0.06);
+    0 3px 8px rgba(0,0,0,0.35),
+    inset 0 1px 0 rgba(255,255,255,1),
+    inset 0 -1px 0 rgba(0,0,0,0.08);
   transition:
     transform 0.18s cubic-bezier(0.34,1.56,0.64,1),
     box-shadow 0.18s,
@@ -30,20 +30,21 @@
   user-select: none;
 }
 
-/* Small variant (for trick/opponent stacks) */
+/* Small variant (for trick/opponent stacks / bid panel hand) */
 .card.small {
-  --cw: 48px;
-  --ch: 66px;
+  --cw: 58px;
+  --ch: 82px;
+  border-width: 1.25px;
 }
 
-/* ── Suit colours ── */
+/* ── Suit colours (high contrast) ── */
 .card.red  .card-rank,
 .card.red  .card-suit-sm,
-.card.red  .card-suit-lg  { color: #cc1111; }
+.card.red  .card-suit-lg  { color: #d40000; }
 
 .card.black .card-rank,
 .card.black .card-suit-sm,
-.card.black .card-suit-lg { color: #0d0d0d; }
+.card.black .card-suit-lg { color: #000000; }
 
 /* ── Corners ── */
 .card-corner {
@@ -51,21 +52,30 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  line-height: 1.1;
+  line-height: 1;
 }
-.card-corner.top-left    { top: 4px;  left: 5px; }
-.card-corner.bottom-right{ bottom: 4px; right: 5px; transform: rotate(180deg); }
+.card-corner.top-left    { top: 5px;  left: 6px; }
+.card-corner.bottom-right{ bottom: 5px; right: 6px; transform: rotate(180deg); }
 
-.card-rank    { font-size: 13px; font-weight: 900; letter-spacing: -0.5px; }
-.card-suit-sm { font-size: 10px; line-height: 1; }
+.card-rank    {
+  font-size: 20px;
+  font-weight: 900;
+  letter-spacing: -0.5px;
+  text-shadow: 0 0 1px rgba(0,0,0,0.05);
+}
+.card-suit-sm { font-size: 16px; line-height: 1; margin-top: 1px; }
 
-.card.small .card-rank    { font-size: 10px; }
-.card.small .card-suit-sm { font-size: 8px; }
+.card.small .card-rank    { font-size: 15px; }
+.card.small .card-suit-sm { font-size: 12px; }
 
-/* ── Center suit ── */
+/* ── Center suit (BIG, clearly visible) ── */
 .card-center { display: flex; align-items: center; justify-content: center; }
-.card-suit-lg { font-size: 30px; }
-.card.small .card-suit-lg { font-size: 20px; }
+.card-suit-lg {
+  font-size: 46px;
+  line-height: 1;
+  text-shadow: 0 1px 1px rgba(0,0,0,0.06);
+}
+.card.small .card-suit-lg { font-size: 30px; }
 
 /* ── Clickable / hover ── */
 .card.clickable { cursor: pointer; }

@@ -100,6 +100,82 @@
   color: rgba(252, 165, 165, 0.65);
 }
 
+/* ── Your hand strip (visible while bidding) ── */
+.bid-hand-block {
+  margin: 14px 20px 0;
+  padding: 10px 12px 12px;
+  background: rgba(0, 0, 0, 0.28);
+  border: 1px solid rgba(240, 192, 64, 0.18);
+  border-radius: 12px;
+}
+
+.bid-hand-label {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 2px;
+  color: rgba(240, 192, 64, 0.7);
+  text-transform: uppercase;
+  margin-bottom: 8px;
+}
+.bid-hand-meta {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  color: rgba(255, 255, 255, 0.55);
+  text-transform: none;
+}
+.bid-hand-trump-count {
+  font-weight: 800;
+  padding: 1px 6px;
+  border-radius: 6px;
+  background: rgba(240, 192, 64, 0.12);
+  border: 1px solid rgba(240, 192, 64, 0.3);
+}
+.bid-hand-trump-count.red { color: #fca5a5; }
+.bid-hand-trump-count.blk { color: #e2e8f0; }
+
+.bid-hand-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  justify-content: center;
+  max-height: 180px;
+  overflow-y: auto;
+  padding: 4px 2px;
+}
+.bid-hand-strip::-webkit-scrollbar { height: 6px; width: 6px; }
+.bid-hand-strip::-webkit-scrollbar-thumb {
+  background: rgba(240, 192, 64, 0.3);
+  border-radius: 4px;
+}
+
+.bid-hand-card-wrap {
+  position: relative;
+  animation: bidCardIn 0.28s ease both;
+  animation-delay: calc(var(--bi) * 30ms);
+  transform-origin: center bottom;
+}
+.bid-hand-card-wrap.trump {
+  filter: drop-shadow(0 0 6px rgba(240, 192, 64, 0.55));
+}
+.bid-hand-card-wrap.trump::after {
+  content: '★';
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  font-size: 12px;
+  color: #fbbf24;
+  text-shadow: 0 0 4px rgba(0, 0, 0, 0.8);
+  pointer-events: none;
+}
+@keyframes bidCardIn {
+  from { opacity: 0; transform: translateY(8px) scale(0.9); }
+  to   { opacity: 1; transform: translateY(0)   scale(1); }
+}
+
 /* ── Bid grid ── */
 .bid-grid {
   display: grid;

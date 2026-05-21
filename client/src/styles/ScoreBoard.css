@@ -220,3 +220,41 @@
   font-size: 15px;
   padding: 14px;
 }
+
+/* ════════════════════════════════════════════════════════════════════
+   RESPONSIVE — ScoreBoard
+   ════════════════════════════════════════════════════════════════════ */
+@media (max-width: 640px) {
+  .sb-root { padding: 12px; }
+  .sb-corner { font-size: 56px; }
+  .sb-card { padding: 22px 18px 18px; border-radius: 18px; gap: 16px; }
+  .sb-game-over { font-size: 22px; letter-spacing: 2px; }
+  .sb-rounds-played { font-size: 11px; }
+  .sb-winner { padding: 14px; border-radius: 12px; }
+  .sb-trophy { font-size: 32px; }
+  .sb-winner-name { font-size: 19px; }
+  .sb-winner-score { font-size: 12px; }
+  .sb-you-won { font-size: 12px; }
+  .sb-section-label { font-size: 9px; }
+  .sb-table th { font-size: 9px; padding: 5px 6px; }
+  .sb-table td { font-size: 13px; padding: 8px 6px; }
+  .sb-rank { font-size: 16px; min-width: 28px; }
+  .sb-score { font-size: 14px; }
+  .sb-correct-num { font-size: 13px; }
+  .sb-correct-den { font-size: 11px; }
+  .sb-legend { padding: 10px 12px; }
+  .sb-legend-hit, .sb-legend-miss { font-size: 11px; }
+  .sb-play-again { font-size: 14px; padding: 12px; }
+}
+
+@media (max-width: 420px) {
+  .sb-card { padding: 18px 14px; }
+  .sb-game-over { font-size: 19px; }
+  .sb-trophy { font-size: 26px; }
+  .sb-winner-name { font-size: 17px; }
+  .sb-table th { letter-spacing: 0.5px; }
+  /* On very small screens compress the correct-rounds column */
+  .sb-table th:nth-child(3), .sb-table td:nth-child(3) {
+    font-size: 11px;
+  }
+}

@@ -7,17 +7,52 @@ import '../styles/GameTable.css';
 const BID_TIMEOUT_SEC  = 8;
 const PLAY_TIMEOUT_SEC = 5;
 
-// Seat positions [left%, top%] within .gt-table for N opponents
-// Me is always at the bottom. Opponents are distributed around the top.
-const SEAT_POSITIONS = [
-  [],                                                                          // 0 opps
-  [[50, 12]],                                                                  // 1 opp
-  [[24, 16], [76, 16]],                                                        // 2 opps
-  [[8, 48], [50, 8], [92, 48]],                                                // 3 opps
-  [[8, 48], [30, 10], [70, 10], [92, 48]],                                     // 4 opps
-  [[8, 48], [20, 20], [50, 8], [80, 20], [92, 48]],                            // 5 opps
-  [[8, 44], [17, 18], [37, 7], [63, 7], [83, 18], [92, 44]],                  // 6 opps
-];
+// Hand-tuned seat positions for 1-6 opponents
+const SEAT_POSITIONS_FIXED = {
+  1: [[50, 12]],
+  2: [[24, 16], [76, 16]],
+  3: [[8, 48], [50, 8], [92, 48]],
+  4: [[8, 48], [30, 10], [70, 10], [92, 48]],
+  5: [[8, 48], [20, 20], [50, 8], [80, 20], [92, 48]],
+  6: [[8, 44], [17, 18], [37, 7], [63, 7], [83, 18], [92, 44]]
+};
+
+// Distribute N opponents along an arc above the table center.
+// Used for 7+ opponents (no hand-tuned layout); also for any count when needed.
+function generateSeatPositions(n) {
+  if (n <= 0) return [];
+  if (SEAT_POSITIONS_FIXED[n]) return SEAT_POSITIONS_FIXED[n];
+  const positions = [];
+  const cx = 50, cy = 36;     // arc center
+  const rx = 44, ry = 28;     // arc radii (% of table)
+  for (let i = 0; i < n; i++) {
+    const t = n === 1 ? 0.5 : i / (n - 1);
+    const angle = Math.PI - t * Math.PI;  // π (left) → 0 (right), arcing over the top
+    const x = cx + Math.cos(angle) * rx;
+    const y = cy - Math.sin(angle) * ry;
+    positions.push([Math.round(x * 10) / 10, Math.round(y * 10) / 10]);
+  }
+  return positions;
+}
+
+// Detect portrait orientation (responsive layout switch).
+function useIsPortrait() {
+  const get = () => typeof window !== 'undefined'
+    && window.matchMedia('(orientation: portrait)').matches;
+  const [isPortrait, setIsPortrait] = useState(get);
+  useEffect(() => {
+    const mq = window.matchMedia('(orientation: portrait)');
+    const handler = (e) => setIsPortrait(e.matches);
+    // Use both for cross-browser support
+    if (mq.addEventListener) mq.addEventListener('change', handler);
+    else mq.addListener(handler);
+    return () => {
+      if (mq.removeEventListener) mq.removeEventListener('change', handler);
+      else mq.removeListener(handler);
+    };
+  }, []);
+  return isPortrait;
+}
 
 // One distinct color gradient per player index (0-6)
 const AVATAR_COLORS = [
@@ -56,7 +91,8 @@ export default function GameTable({ socket, myId, roomId, gameState, trickWon, s
 
   const me        = gameState.players.find(p => p.id === myId);
   const opponents = gameState.players.filter(p => p.id !== myId);
-  const positions = SEAT_POSITIONS[Math.min(opponents.length, 6)];
+  const positions = generateSeatPositions(opponents.length);
+  const isPortrait = useIsPortrait();
 
   // How many cards each player still holds this trick-sequence
   const totalTricksPlayed = gameState.totalTricksPlayed ??
@@ -212,31 +248,33 @@ export default function GameTable({ socket, myId, roomId, gameState, trickWon, s
       <div className="gt-content">
 
         {/* ── Game table ── */}
-        <div className="gt-table">
+        <div className={`gt-table ${isPortrait ? 'portrait' : 'landscape'}`}>
 
           {/* Felt surface with oval shape */}
           <div className="gt-felt" />
 
           {/* ── Opponent seats ── */}
-          {opponents.map((opp, i) => {
-            const pos = positions[i] || [50, 12];
-            return (
-              <PlayerSeat
-                key={opp.id}
-                player={opp}
-                leftPct={pos[0]}
-                topPct={pos[1]}
-                bid={gameState.bids[opp.id]}
-                tricks={gameState.tricks[opp.id] || 0}
-                isActive={gameState.currentPlayer === opp.id}
-                isBidding={isBidding}
-                cardsRemaining={cardsRemaining}
-                avatarColor={getPlayerColor(opp.id)}
-                isHostUser={isHost}
-                onKick={(pid) => socket.emit('kickPlayer', { roomId, playerId: pid })}
-              />
-            );
-          })}
+          <div className="gt-opponents">
+            {opponents.map((opp, i) => {
+              const pos = positions[i] || [50, 12];
+              return (
+                <PlayerSeat
+                  key={opp.id}
+                  player={opp}
+                  leftPct={pos[0]}
+                  topPct={pos[1]}
+                  bid={gameState.bids[opp.id]}
+                  tricks={gameState.tricks[opp.id] || 0}
+                  isActive={gameState.currentPlayer === opp.id}
+                  isBidding={isBidding}
+                  cardsRemaining={cardsRemaining}
+                  avatarColor={getPlayerColor(opp.id)}
+                  isHostUser={isHost}
+                  onKick={(pid) => socket.emit('kickPlayer', { roomId, playerId: pid })}
+                />
+              );
+            })}
+          </div>
 
           {/* ── Center area ── */}
           <div className="gt-center">

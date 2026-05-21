@@ -220,6 +220,15 @@
 /* ════════════════════════════════════════
    OPPONENT SEATS
    ════════════════════════════════════════ */
+
+/* Wrapper — pass-through positioning by default; portrait CSS turns it into a strip */
+.gt-opponents {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+.gt-opponents > * { pointer-events: auto; }
+
 .gt-seat {
   position: absolute;
   transform: translate(-50%, -50%);
@@ -255,12 +264,25 @@
 }
 .gt-seat-avatar.active {
   border-color: #fbbf24;
-  box-shadow: 0 0 0 3px rgba(251,191,36,0.35), 0 4px 18px rgba(0,0,0,0.6);
-  animation: avatarPulse 1.3s ease-in-out infinite;
+  box-shadow:
+    0 0 0 4px rgba(251,191,36,0.55),
+    0 0 22px rgba(251,191,36,0.55),
+    0 4px 18px rgba(0,0,0,0.6);
+  animation: avatarPulse 1.2s ease-in-out infinite;
 }
 @keyframes avatarPulse {
-  0%,100% { box-shadow: 0 0 0 3px rgba(251,191,36,0.3), 0 4px 16px rgba(0,0,0,0.5); }
-  50%     { box-shadow: 0 0 0 5px rgba(251,191,36,0.55), 0 4px 24px rgba(0,0,0,0.7); }
+  0%,100% {
+    box-shadow:
+      0 0 0 3px rgba(251,191,36,0.45),
+      0 0 18px rgba(251,191,36,0.45),
+      0 4px 16px rgba(0,0,0,0.5);
+  }
+  50% {
+    box-shadow:
+      0 0 0 6px rgba(251,191,36,0.75),
+      0 0 36px rgba(251,191,36,0.7),
+      0 4px 24px rgba(0,0,0,0.7);
+  }
 }
 .gt-seat-letter {
   font-size: 20px;
@@ -558,6 +580,17 @@
   align-items: flex-end;
   z-index: 110;             /* sit above the bid overlay so cards stay visible */
   filter: drop-shadow(0 6px 18px rgba(0,0,0,0.7));
+  max-width: 100%;
+  padding: 0 8px;
+  /* On narrow screens, fall back to horizontal scrolling instead of squishing */
+  overflow-x: auto;
+  overflow-y: visible;
+  scrollbar-width: thin;
+  -webkit-overflow-scrolling: touch;
+}
+.gt-my-hand::-webkit-scrollbar { height: 4px; }
+.gt-my-hand::-webkit-scrollbar-thumb {
+  background: rgba(240,192,64,0.35); border-radius: 2px;
 }
 
 /* Lead suit hint */
@@ -868,6 +901,24 @@
   .gt-my-hand:hover .card { margin-left: -12px; }
 }
 
+/* Round-end overlay (mobile) */
+@media (max-width: 768px) {
+  .gt-ree-panel {
+    min-width: 0;
+    width: 100%;
+    margin: 12px;
+    padding: 20px 18px 18px;
+    border-radius: 16px;
+    max-height: 90vh;
+    overflow-y: auto;
+  }
+  .gt-ree-title { font-size: 18px; }
+  .gt-ree-sub { font-size: 11px; }
+  .gt-ree-table th { font-size: 9px; padding: 5px 5px; }
+  .gt-ree-table td { font-size: 12px; padding: 7px 5px; }
+  .gt-ree-next { font-size: 14px; padding: 11px; }
+}
+
 /* ── Small phone (≤ 480px) ── */
 @media (max-width: 480px) {
   /* Card sizes shrink further via root variables (set in Card.css) */
@@ -908,4 +959,63 @@
   .gt-sb-list { flex-direction: column; overflow-x: hidden; overflow-y: auto; }
   .gt-sb-row { min-width: 0; }
   .gt-my-seat { bottom: 110px; }
+}
+
+/* ════════════════════════════════════════════════════════════════════
+   PORTRAIT MODE — opponents become a horizontal strip at the top.
+   Teen Patti-style: clear single row of avatars, scroll if too many.
+   ════════════════════════════════════════════════════════════════════ */
+.gt-table.portrait .gt-opponents {
+  position: absolute;
+  top: 8px;
+  left: 0;
+  right: 0;
+  bottom: auto;
+  display: flex;
+  align-items: flex-start;
+  justify-content: flex-start;
+  gap: 12px;
+  padding: 6px 10px;
+  overflow-x: auto;
+  overflow-y: visible;
+  scrollbar-width: thin;
+  -webkit-overflow-scrolling: touch;
+  scroll-snap-type: x proximity;
+}
+.gt-table.portrait .gt-opponents::-webkit-scrollbar { height: 4px; }
+.gt-table.portrait .gt-opponents::-webkit-scrollbar-thumb {
+  background: rgba(240,192,64,0.3); border-radius: 2px;
+}
+
+/* Override the inline left/top from JSX */
+.gt-table.portrait .gt-seat {
+  position: relative !important;
+  left: auto !important;
+  top: auto !important;
+  transform: none !important;
+  scroll-snap-align: start;
+  flex-shrink: 0;
+  margin: 0;
+}
+
+/* Center area sits lower on portrait so it doesn't fight with the strip */
+.gt-table.portrait .gt-center {
+  top: auto;
+  bottom: 50%;
+  transform: translate(-50%, 50%);
+}
+
+/* Felt rail is rounder in portrait */
+.gt-table.portrait .gt-felt::after {
+  border-radius: 38% / 50%;
+  inset: 10px;
+}
+
+/* Hide opponent face-down card stacks in portrait (saves vertical space) */
+.gt-table.portrait .gt-seat-cards { display: none; }
+
+/* Portrait my-seat sits higher to give room for hand */
+@media (orientation: portrait) and (max-width: 768px) {
+  .gt-my-seat { bottom: 120px; }
+  .gt-my-hand { bottom: 16px; }
 }

@@ -291,11 +291,11 @@
   .bid-hand-strip { gap: 4px; max-height: 130px; }
   .bid-forbidden { margin: 10px 14px 0; font-size: 12px; padding: 6px 12px; }
   .bid-grid {
-    grid-template-columns: repeat(auto-fill, minmax(48px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(54px, 1fr));
     gap: 8px;
     padding: 12px 14px;
   }
-  .bid-tile { font-size: 18px; border-width: 2px; }
+  .bid-tile { font-size: 19px; border-width: 2px; min-height: 54px; }
   .bid-hint { font-size: 10px; padding: 0 14px 12px; }
 }
 
@@ -318,9 +318,9 @@
   .bid-sub { font-size: 9px; }
   .bid-hand-strip { max-height: 100px; }
   .bid-grid {
-    grid-template-columns: repeat(auto-fill, minmax(42px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(48px, 1fr));
     gap: 6px;
     padding: 10px 12px;
   }
-  .bid-tile { font-size: 16px; }
+  .bid-tile { font-size: 17px; min-height: 48px; }
 }

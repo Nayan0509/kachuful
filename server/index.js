@@ -249,30 +249,37 @@ function playCard(roomId, playerId, card) {
     const winnerId = determineTrickWinner(room.currentTrick, room.trumpSuit, room.leadSuit);
     room.tricks[winnerId] = (room.tricks[winnerId] || 0) + 1;
     const snap = [...room.currentTrick];
-    room.currentTrick = [];
-    room.leadSuit = null;
+    // IMPORTANT: do NOT clear room.currentTrick yet — we want every player to see
+    // the final card sit on the table during the trickWon animation.
 
     const winnerName = room.players.find(p => p.id === winnerId)?.name || 'Player';
     io.to(roomId).emit('trickWon', { winnerId, winnerName, trick: snap });
 
     const totalTricks = Object.values(room.tricks).reduce((a, b) => a + b, 0);
-    if (totalTricks === room.roundSequence[room.round - 1]) {
-      clearTurnTimer(roomId);
-      endRound(roomId);
-    } else {
-      // Pause: clear the active timer, give the client a moment to show the trickWon animation,
-      // THEN start the next player's countdown so they get the full PLAY_TIMEOUT to react.
-      clearTurnTimer(roomId);
-      room.currentPlayer = winnerId;
-      broadcastRoom(roomId);
-      setTimeout(() => {
-        // re-verify the room still exists in playing state with same currentPlayer
-        const r = rooms[roomId];
-        if (!r || r.state !== 'playing' || r.currentPlayer !== winnerId) return;
+    const roundComplete = totalTricks === room.roundSequence[room.round - 1];
+
+    // Clear the active turn timer immediately so no one is on a countdown during the pause.
+    clearTurnTimer(roomId);
+    // Move turn pointer to winner so the UI highlights them — but currentTrick still on table.
+    room.currentPlayer = winnerId;
+    broadcastRoom(roomId);  // cards still visible at this point
+
+    // Hold cards on the table for TRICK_PAUSE so the losing/non-acting player(s) can see them.
+    setTimeout(() => {
+      const r = rooms[roomId];
+      if (!r) return;
+      // Now clear the trick and continue
+      r.currentTrick = [];
+      r.leadSuit = null;
+
+      if (roundComplete) {
+        endRound(roomId);              // endRound broadcasts the roundEnd state
+      } else {
+        if (r.state !== 'playing' || r.currentPlayer !== winnerId) return;
         startTurnTimer(roomId);
-        broadcastRoom(roomId);  // re-broadcast so client picks up new turnDeadline
-      }, TRICK_PAUSE);
-    }
+        broadcastRoom(roomId);         // fresh state with cleared trick + new turn deadline
+      }
+    }, TRICK_PAUSE);
   } else {
     // Next player in circular order
     const i = room.players.findIndex(p => p.id === playerId);

@@ -31,6 +31,7 @@ const turnTimers = {};
 // Per-phase auto-act timeouts
 const BID_TIMEOUT  = 8000;   // 8s to choose a bid, else auto-bid 0 (or 1 if 0 forbidden)
 const PLAY_TIMEOUT = 5000;   // 5s to play a card, else auto-throw
+const TRICK_PAUSE  = 1500;   // matches client trickWon overlay, so the next 5s timer feels honest
 
 function timeoutForState(state) {
   if (state === 'bidding') return BID_TIMEOUT;
@@ -61,35 +62,57 @@ function startTurnTimer(roomId) {
 }
 
 function autoAct(roomId) {
-  const room = rooms[roomId];
-  if (!room) return;
-  const currentPlayer = room.players.find(p => p.id === room.currentPlayer);
-  const playerName = currentPlayer?.name || 'Player';
+  try {
+    const room = rooms[roomId];
+    if (!room) return;
+    const currentPlayer = room.players.find(p => p.id === room.currentPlayer);
+    const playerName = currentPlayer?.name || 'Player';
 
-  if (room.state === 'bidding') {
-    const forbidden = getForbiddenBid(room);
-    const autoBid = forbidden === 0 ? 1 : 0;
-    room.bids[room.currentPlayer] = autoBid;
-    io.to(roomId).emit('autoActed', {
-      playerId: room.currentPlayer,
-      playerName,
-      action: `bid ${autoBid}`
-    });
-    nextBidder(roomId);
-  } else if (room.state === 'playing') {
-    const hand = room.hands[room.currentPlayer] || [];
-    if (hand.length === 0) return;
-    let card = hand[0];
-    if (room.leadSuit) {
-      const suited = hand.find(c => c.suit === room.leadSuit);
-      if (suited) card = suited;
+    if (room.state === 'bidding') {
+      // Don't double-bid if a placeBid sneaked in before this timer fired
+      if (room.bids[room.currentPlayer] !== undefined) {
+        broadcastRoom(roomId);
+        return;
+      }
+      const forbidden = getForbiddenBid(room);
+      const autoBid = forbidden === 0 ? 1 : 0;
+      room.bids[room.currentPlayer] = autoBid;
+      io.to(roomId).emit('autoActed', {
+        playerId: room.currentPlayer,
+        playerName,
+        action: `bid ${autoBid}`
+      });
+      nextBidder(roomId);
+    } else if (room.state === 'playing') {
+      const hand = room.hands[room.currentPlayer] || [];
+      if (hand.length === 0) return;
+      // Pick a legal card: prefer matching lead suit, otherwise hand[0]
+      let card = hand[0];
+      if (room.leadSuit) {
+        const suited = hand.find(c => c.suit === room.leadSuit);
+        if (suited) card = suited;
+      }
+      io.to(roomId).emit('autoActed', {
+        playerId: room.currentPlayer,
+        playerName,
+        action: 'played a card'
+      });
+      const result = playCard(roomId, room.currentPlayer, card);
+      if (result?.error) {
+        // Last-resort: just throw the first card in hand — should always be legal here
+        console.warn(`autoAct playCard failed (${result.error}); falling back to hand[0]`);
+        const fallback = playCard(roomId, room.currentPlayer, hand[0]);
+        if (fallback?.error) {
+          // Game is in an inconsistent state — restart the timer so we don't get stuck
+          console.error(`autoAct fallback also failed (${fallback.error}); restarting turn timer`);
+          startTurnTimer(roomId);
+        }
+      }
     }
-    io.to(roomId).emit('autoActed', {
-      playerId: room.currentPlayer,
-      playerName,
-      action: 'played a card'
-    });
-    playCard(roomId, room.currentPlayer, card);
+  } catch (err) {
+    console.error('autoAct crashed:', err);
+    // Make sure the room doesn't end up timer-less
+    if (rooms[roomId]) startTurnTimer(roomId);
   }
 }
 
@@ -237,9 +260,18 @@ function playCard(roomId, playerId, card) {
       clearTurnTimer(roomId);
       endRound(roomId);
     } else {
+      // Pause: clear the active timer, give the client a moment to show the trickWon animation,
+      // THEN start the next player's countdown so they get the full PLAY_TIMEOUT to react.
+      clearTurnTimer(roomId);
       room.currentPlayer = winnerId;
       broadcastRoom(roomId);
-      startTurnTimer(roomId);
+      setTimeout(() => {
+        // re-verify the room still exists in playing state with same currentPlayer
+        const r = rooms[roomId];
+        if (!r || r.state !== 'playing' || r.currentPlayer !== winnerId) return;
+        startTurnTimer(roomId);
+        broadcastRoom(roomId);  // re-broadcast so client picks up new turnDeadline
+      }, TRICK_PAUSE);
     }
   } else {
     // Next player in circular order
@@ -368,6 +400,15 @@ io.on('connection', (socket) => {
     room.players = room.players.filter(p => p.id !== playerId);
     io.to(playerId).emit('kicked', { message: 'You were removed from the room' });
     broadcastRoom(roomId);
+  });
+
+  // Client self-heal: re-push the room state to a possibly-stale client
+  socket.on('requestState', ({ roomId }) => {
+    const room = rooms[roomId];
+    if (!room) return;
+    if (!room.players.find(p => p.id === socket.id)) return;
+    const pub = getPublicRoom(room);
+    socket.emit('gameState', { ...pub, myHand: room.hands[socket.id] || [] });
   });
 
   socket.on('chatMessage', ({ roomId, message }) => {

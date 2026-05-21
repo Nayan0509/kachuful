@@ -34,16 +34,25 @@ const IS_RED = s => s === '♥' || s === '♦';
 
 export default function GameTable({ socket, myId, roomId, gameState, trickWon, showToast }) {
   const [timeLeft, setTimeLeft] = useState(null);
+  // Local "in-flight action" lock so the user gets immediate feedback after clicking
+  // a card or bid. Cleared whenever gameState.currentPlayer or gameState.state changes.
+  const [submitting, setSubmitting] = useState(false);
   const timerRef = useRef(null);
+  const healTimerRef = useRef(null);
 
   const myHand     = gameState.myHand || [];
   const isBidding  = gameState.state === 'bidding';
   const isPlaying  = gameState.state === 'playing';
   const myBid      = gameState.bids[myId];
   const myTricks   = gameState.tricks[myId] || 0;
-  const isMyBidTurn  = isBidding && gameState.currentPlayer === myId && myBid === undefined;
-  const isMyPlayTurn = isPlaying && gameState.currentPlayer === myId;
+  const isMyBidTurn  = isBidding && gameState.currentPlayer === myId && myBid === undefined && !submitting;
+  const isMyPlayTurn = isPlaying && gameState.currentPlayer === myId && !submitting;
   const isHost     = gameState.host === myId;
+
+  // Clear the submit lock whenever the server has advanced (different turn / phase / hand size).
+  useEffect(() => {
+    setSubmitting(false);
+  }, [gameState.currentPlayer, gameState.state, gameState.currentTrick.length, myHand.length]);
 
   const me        = gameState.players.find(p => p.id === myId);
   const opponents = gameState.players.filter(p => p.id !== myId);
@@ -59,19 +68,31 @@ export default function GameTable({ socket, myId, roomId, gameState, trickWon, s
     return AVATAR_COLORS[idx % AVATAR_COLORS.length];
   };
 
-  // Countdown timer — ticks at 100ms for a smooth bar on the short play timer
+  // Countdown timer — ticks at 100ms for a smooth bar on the short play timer.
+  // Self-heal: if the local clock hits 0 and the server hasn't pushed a new
+  // gameState within 2s, request a fresh state. Recovers from any desync.
   useEffect(() => {
     if (timerRef.current) clearInterval(timerRef.current);
+    if (healTimerRef.current) clearTimeout(healTimerRef.current);
     if (!gameState.turnDeadline) { setTimeLeft(null); return; }
     const tick = () => {
       const left = Math.max(0, (gameState.turnDeadline - Date.now()) / 1000);
       setTimeLeft(left);
-      if (left <= 0) clearInterval(timerRef.current);
+      if (left <= 0) {
+        clearInterval(timerRef.current);
+        // Wait 2s for the server's auto-act broadcast; if nothing arrives, ask for state.
+        healTimerRef.current = setTimeout(() => {
+          if (socket && roomId) socket.emit('requestState', { roomId });
+        }, 2000);
+      }
     };
     tick();
     timerRef.current = setInterval(tick, 100);
-    return () => clearInterval(timerRef.current);
-  }, [gameState.turnDeadline, gameState.currentPlayer]);
+    return () => {
+      clearInterval(timerRef.current);
+      if (healTimerRef.current) clearTimeout(healTimerRef.current);
+    };
+  }, [gameState.turnDeadline, gameState.currentPlayer, socket, roomId]);
 
   // Persist session for rejoin
   useEffect(() => {
@@ -83,7 +104,10 @@ export default function GameTable({ socket, myId, roomId, gameState, trickWon, s
 
   const handlePlayCard = (card) => {
     if (!isMyPlayTurn) return showToast('Not your turn', 'error');
+    setSubmitting(true);
     socket.emit('playCard', { roomId, card });
+    // Safety: if the server doesn't acknowledge in 3s, release the lock so the user can retry.
+    setTimeout(() => setSubmitting(false), 3000);
   };
 
   // Returns 'legal' | 'illegal' | 'disabled'
@@ -96,8 +120,12 @@ export default function GameTable({ socket, myId, roomId, gameState, trickWon, s
     return 'legal';
   };
 
-  const handleBid       = (bid) => socket.emit('placeBid', { roomId, bid });
-  const handleNextRound = ()    => socket.emit('nextRound', { roomId });
+  const handleBid = (bid) => {
+    setSubmitting(true);
+    socket.emit('placeBid', { roomId, bid });
+    setTimeout(() => setSubmitting(false), 3000);
+  };
+  const handleNextRound = () => socket.emit('nextRound', { roomId });
 
   // Pick the timer cap from server-provided duration if present; otherwise fall back per phase.
   const timerCap = gameState.turnDuration

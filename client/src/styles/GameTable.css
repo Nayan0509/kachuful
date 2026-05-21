@@ -777,3 +777,135 @@
    ════════════════════════════════════════ */
 @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 @keyframes popIn  { from { opacity: 0; transform: scale(0.78); } to { opacity: 1; transform: scale(1); } }
+
+/* ════════════════════════════════════════════════════════════════════
+   RESPONSIVE — tablet, phone, small phone
+   ════════════════════════════════════════════════════════════════════ */
+
+/* ── Tablet & narrow desktops (≤ 1024px) ── */
+@media (max-width: 1024px) {
+  .gt-sidebar { width: 156px; }
+  .gt-sb-nametxt { max-width: 60px; font-size: 11px; }
+  .gt-sb-score { font-size: 13px; }
+  .gt-trump-suit { font-size: 26px; }
+  .gt-trump-rank { font-size: 16px; }
+  .gt-seat-avatar { width: 46px; height: 46px; }
+  .gt-seat-letter { font-size: 17px; }
+  .gt-seat-name   { font-size: 10px; max-width: 84px; }
+}
+
+/* ── Phone (≤ 768px) ── */
+@media (max-width: 768px) {
+  /* Compact top bar */
+  .gt-topbar {
+    padding: 6px 10px;
+    min-height: 46px;
+    gap: 6px;
+  }
+  .gt-topbar-center { position: static; transform: none; gap: 4px; }
+  .gt-topbar-left .gt-player-count { display: none; }
+  .gt-room-pill { padding: 3px 8px; }
+  .gt-room-code { font-size: 12px; letter-spacing: 2px; }
+  .gt-round-number { font-size: 15px; }
+  .gt-round-total { font-size: 12px; }
+  .gt-phase-chip { padding: 2px 7px; font-size: 9px; letter-spacing: 1px; }
+  .gt-trump-pill { padding: 4px 10px; gap: 6px; }
+  .gt-trump-suit { font-size: 22px; }
+  .gt-trump-rank { font-size: 14px; }
+  .gt-trump-label-sm { display: none; }
+
+  /* Sidebar becomes a slim bottom strip */
+  .gt-content { flex-direction: column; }
+  .gt-sidebar {
+    width: 100%;
+    max-height: 110px;
+    border-left: none;
+    border-top: 1px solid rgba(240,192,64,0.12);
+    flex-direction: column;
+    order: 2;
+  }
+  .gt-sb-header { padding: 6px 10px 4px; }
+  .gt-sb-list {
+    display: flex;
+    flex-direction: row;
+    overflow-x: auto;
+    overflow-y: hidden;
+    padding: 4px 6px;
+    gap: 6px;
+  }
+  .gt-sb-row {
+    flex-shrink: 0;
+    padding: 4px 8px;
+    min-width: 130px;
+    margin-bottom: 0;
+  }
+  .gt-sb-legend { display: none; }
+
+  /* Reposition the player's own area higher since the sidebar is now below */
+  .gt-my-seat   { bottom: 96px; }
+  .gt-my-hand   { bottom: 8px;  }
+  .gt-my-avatar { width: 48px;  height: 48px; }
+  .gt-avatar-letter { font-size: 18px; }
+  .gt-my-name { font-size: 11px; padding: 2px 8px; }
+  .gt-my-score { font-size: 10px; padding: 1px 7px; }
+
+  /* Tighter trick pile */
+  .gt-trick-pile { max-width: 240px; gap: 4px; }
+
+  /* Smaller opponent seats */
+  .gt-seat-avatar { width: 40px; height: 40px; }
+  .gt-seat-letter { font-size: 15px; }
+  .gt-seat-name { font-size: 10px; padding: 1px 7px; max-width: 76px; }
+  .gt-seat-bid { font-size: 9px; }
+  .gt-seat-score { font-size: 9px; }
+  .gt-seat-cards .card { margin-left: -16px; }
+
+  /* Timer bar — slimmer */
+  .gt-timer-wrap { padding: 0; }
+
+  /* Hand: tighter overlap so wider hands still fit */
+  .gt-my-hand .card { margin-left: -28px; }
+  .gt-my-hand:hover .card { margin-left: -12px; }
+}
+
+/* ── Small phone (≤ 480px) ── */
+@media (max-width: 480px) {
+  /* Card sizes shrink further via root variables (set in Card.css) */
+  .gt-topbar { min-height: 42px; padding: 4px 8px; }
+  .gt-round-text, .gt-round-sep { display: none; }
+  .gt-round-number { font-size: 14px; }
+  .gt-room-pill { padding: 2px 6px; }
+  .gt-room-label { display: none; }
+  .gt-room-code { font-size: 11px; }
+
+  .gt-sidebar { max-height: 96px; }
+  .gt-sb-row { min-width: 110px; }
+  .gt-sb-nametxt { max-width: 52px; font-size: 10px; }
+  .gt-sb-score { font-size: 12px; }
+  .gt-sb-rank { font-size: 11px; min-width: 18px; }
+
+  .gt-my-seat   { bottom: 84px; }
+  .gt-my-avatar { width: 42px; height: 42px; }
+  .gt-avatar-letter { font-size: 16px; }
+
+  /* Even tighter card overlap on small phones */
+  .gt-my-hand .card { margin-left: -32px; }
+
+  /* Felt: simpler */
+  .gt-felt::after { inset: 8px; }
+}
+
+/* ── Landscape phone — keep the sidebar on the right but slim ── */
+@media (max-width: 900px) and (orientation: landscape) {
+  .gt-content { flex-direction: row; }
+  .gt-sidebar {
+    width: 130px;
+    max-height: none;
+    border-left: 1px solid rgba(240,192,64,0.1);
+    border-top: none;
+    order: 0;
+  }
+  .gt-sb-list { flex-direction: column; overflow-x: hidden; overflow-y: auto; }
+  .gt-sb-row { min-width: 0; }
+  .gt-my-seat { bottom: 110px; }
+}

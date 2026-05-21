@@ -21,15 +21,20 @@ function shuffle(deck) {
 }
 
 function maxCardsPerRound(playerCount) {
-  // Cap at 13 (one suit), limited by deck size
-  return Math.min(13, Math.floor(52 / playerCount));
+  // Reserve 1 card for the trump, cap at 13 (one suit's worth).
+  // Always returns at least 1 so the game is playable for any player count
+  // for which we can deal at least one card per player.
+  const fromDeck = Math.floor((52 - 1) / Math.max(1, playerCount));
+  return Math.max(1, Math.min(13, fromDeck));
 }
 
 // Build the full round sequence: 1,2,3...max...3,2,1
 function buildRoundSequence(playerCount) {
   const max = maxCardsPerRound(playerCount);
   const up   = Array.from({ length: max }, (_, i) => i + 1);       // 1..max
-  const down = Array.from({ length: max - 1 }, (_, i) => max - 1 - i); // max-1..1
+  // For max === 1 there's no "down" leg
+  const downLen = Math.max(0, max - 1);
+  const down = Array.from({ length: downLen }, (_, i) => downLen - i); // max-1..1
   return [...up, ...down];
 }
 

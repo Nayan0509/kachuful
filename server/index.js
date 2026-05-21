@@ -322,7 +322,6 @@ io.on('connection', (socket) => {
     const room = rooms[roomId];
     if (!room) return socket.emit('error', { message: 'Room not found' });
     if (room.state !== 'lobby') return socket.emit('error', { message: 'Game already started' });
-    if (room.players.length >= 7) return socket.emit('error', { message: 'Room full (max 7)' });
     if (room.players.find(p => p.id === socket.id)) return;
     // Deduplicate name
     let finalName = name;
@@ -402,11 +401,83 @@ io.on('connection', (socket) => {
     const room = rooms[roomId];
     if (!room) return;
     if (room.host !== socket.id) return socket.emit('error', { message: 'Only host can kick' });
-    if (room.state !== 'lobby') return socket.emit('error', { message: 'Can only kick in lobby' });
     if (playerId === socket.id) return socket.emit('error', { message: 'Cannot kick yourself' });
-    room.players = room.players.filter(p => p.id !== playerId);
+    const victim = room.players.find(p => p.id === playerId);
+    if (!victim) return;
+
+    // Notify and remove
     io.to(playerId).emit('kicked', { message: 'You were removed from the room' });
-    broadcastRoom(roomId);
+    const wasIdx = room.players.findIndex(p => p.id === playerId);
+    room.players = room.players.filter(p => p.id !== playerId);
+    delete room.hands[playerId];
+    delete room.bids[playerId];
+    delete room.tricks[playerId];
+
+    // Keep dealerIndex in range
+    if (room.players.length > 0) {
+      if (room.dealerIndex >= room.players.length) {
+        room.dealerIndex = room.dealerIndex % room.players.length;
+      } else if (wasIdx >= 0 && wasIdx < room.dealerIndex) {
+        // Kicked seat was before the dealer → shift dealer back one to keep pointing at same person
+        room.dealerIndex = Math.max(0, room.dealerIndex - 1);
+      }
+    }
+
+    // If game was in progress and now has <2 players → end the game.
+    if (room.state !== 'lobby' && room.players.length < 2) {
+      clearTurnTimer(roomId);
+      room.state = 'gameOver';
+      broadcastRoom(roomId);
+      return;
+    }
+
+    // Drop any pending cards this player had on the table (their current-trick contribution).
+    room.currentTrick = room.currentTrick.filter(t => t.playerId !== playerId);
+
+    // If it was their turn, auto-advance.
+    if (room.currentPlayer === playerId) {
+      clearTurnTimer(roomId);
+      if (room.state === 'bidding') {
+        // Find the next un-bid player in circular order from the kicked seat
+        // (using players list AFTER removal)
+        // Pick the player immediately following the dealer who hasn't bid yet
+        const start = (room.dealerIndex + 1) % room.players.length;
+        let pickIdx = -1;
+        for (let i = 0; i < room.players.length; i++) {
+          const idx = (start + i) % room.players.length;
+          if (room.bids[room.players[idx].id] === undefined) { pickIdx = idx; break; }
+        }
+        if (pickIdx === -1) {
+          // Everyone remaining has bid → start playing
+          room.state = 'playing';
+          room.currentPlayer = room.players[(room.dealerIndex + 1) % room.players.length].id;
+        } else {
+          room.currentPlayer = room.players[pickIdx].id;
+        }
+        broadcastRoom(roomId);
+        startTurnTimer(roomId);
+      } else if (room.state === 'playing') {
+        // If the kick caused all remaining players to have played to this trick, resolve it.
+        if (room.currentTrick.length === room.players.length && room.players.length > 0) {
+          // Force trick resolution by replaying playCard logic with the last card on top
+          // — easier: just advance to next player who hasn't played
+          const playedIds = new Set(room.currentTrick.map(t => t.playerId));
+          const next = room.players.find(p => !playedIds.has(p.id));
+          room.currentPlayer = next ? next.id : room.players[0].id;
+        } else {
+          // Advance to next player in seating order
+          const next = room.players[0]; // fallback
+          room.currentPlayer = next.id;
+        }
+        broadcastRoom(roomId);
+        startTurnTimer(roomId);
+      } else {
+        broadcastRoom(roomId);
+      }
+    } else {
+      // Host re-pointer if host got kicked (shouldn't happen — they kicked themselves check above).
+      broadcastRoom(roomId);
+    }
   });
 
   // Client self-heal: re-push the room state to a possibly-stale client

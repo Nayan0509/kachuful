@@ -285,16 +285,15 @@ export default function GameTable({ socket, myId, roomId, gameState, trickWon, s
           {/* ── My seat (bottom) ── */}
           <div className={`gt-my-seat ${gameState.currentPlayer === myId ? 'active' : ''}`}>
 
-            {/* Bid/status bubble */}
-            {isMyBidTurn ? (
-              <div className="gt-bubble waiting">Waiting to bid…</div>
-            ) : myBid !== undefined ? (
+            {/* Bid/status bubble — only show once a final bid is placed.
+                The bid panel handles "your turn to bid" state. */}
+            {myBid !== undefined && (
               <div className="gt-bubble">
                 {isBidding
                   ? `Bid: ${myBid}`
                   : `${myBid} bid · ${myTricks} won`}
               </div>
-            ) : null}
+            )}
 
             <div className="gt-my-avatar" style={{ background: getPlayerColor(myId) }}>
               <span className="gt-avatar-letter">{me?.name?.[0]?.toUpperCase() || '?'}</span>
@@ -364,13 +363,11 @@ export default function GameTable({ socket, myId, roomId, gameState, trickWon, s
                         {!p.connected && <span className="gt-sb-dc">⚡</span>}
                         <span className="gt-sb-nametxt">{p.name}</span>
                       </div>
-                      {bid !== undefined ? (
+                      {bid !== undefined && (
                         <div className={`gt-sb-bid ${bidHit ? 'hit' : 'miss'}`}>
                           {bid} bid · {tricks} won
                         </div>
-                      ) : isBidding ? (
-                        <div className="gt-sb-bidding">bidding…</div>
-                      ) : null}
+                      )}
                     </div>
                     <div className="gt-sb-score">{p.score}</div>
                   </div>
@@ -501,8 +498,6 @@ function PlayerSeat({
           <div className={`gt-seat-bid ${bidHit ? 'hit' : ''}`}>
             {bid} bid · {tricks} won
           </div>
-        ) : isBidding ? (
-          <div className="gt-seat-bidding">bidding…</div>
         ) : (
           <div className="gt-seat-score">{player.score} pts</div>
         )}

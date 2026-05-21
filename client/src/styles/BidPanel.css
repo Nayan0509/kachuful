@@ -261,3 +261,66 @@
   color: rgba(255,255,255,0.25);
   padding: 0 20px 16px;
 }
+
+/* ════════════════════════════════════════════════════════════════════
+   RESPONSIVE — BidPanel
+   ════════════════════════════════════════════════════════════════════ */
+@media (max-width: 768px) {
+  .bid-overlay { padding-bottom: 180px; padding-left: 8px; padding-right: 8px; }
+  .bid-overlay::before {
+    background:
+      linear-gradient(
+        to bottom,
+        rgba(0, 0, 0, 0.55) 0%,
+        rgba(0, 0, 0, 0.55) calc(100% - 200px),
+        rgba(0, 0, 0, 0)    100%
+      );
+    -webkit-mask-image: linear-gradient(to bottom, #000 calc(100% - 200px), transparent 100%);
+            mask-image: linear-gradient(to bottom, #000 calc(100% - 200px), transparent 100%);
+  }
+  .bid-panel { width: 100%; max-width: 420px; border-radius: 18px; }
+  .bid-header { padding: 12px 14px 10px; gap: 10px; }
+  .bid-trump-block { padding: 5px 9px; gap: 4px; }
+  .bid-trump-sym { font-size: 20px; }
+  .bid-trump-rnk { font-size: 13px; }
+  .bid-title { font-size: 15px; letter-spacing: 0.5px; }
+  .bid-sub { font-size: 10px; }
+  .bid-hand-block { margin: 10px 14px 0; padding: 8px 10px; }
+  .bid-hand-label { font-size: 9px; margin-bottom: 6px; }
+  .bid-hand-meta { font-size: 10px; }
+  .bid-hand-strip { gap: 4px; max-height: 130px; }
+  .bid-forbidden { margin: 10px 14px 0; font-size: 12px; padding: 6px 12px; }
+  .bid-grid {
+    grid-template-columns: repeat(auto-fill, minmax(48px, 1fr));
+    gap: 8px;
+    padding: 12px 14px;
+  }
+  .bid-tile { font-size: 18px; border-width: 2px; }
+  .bid-hint { font-size: 10px; padding: 0 14px 12px; }
+}
+
+@media (max-width: 480px) {
+  .bid-overlay { padding-bottom: 160px; }
+  .bid-overlay::before {
+    background:
+      linear-gradient(
+        to bottom,
+        rgba(0, 0, 0, 0.55) 0%,
+        rgba(0, 0, 0, 0.55) calc(100% - 180px),
+        rgba(0, 0, 0, 0)    100%
+      );
+    -webkit-mask-image: linear-gradient(to bottom, #000 calc(100% - 180px), transparent 100%);
+            mask-image: linear-gradient(to bottom, #000 calc(100% - 180px), transparent 100%);
+  }
+  .bid-panel { border-radius: 14px; }
+  .bid-trump-card-wrap { display: none; } /* trump symbol + rank still in the block to the left */
+  .bid-title { font-size: 13px; }
+  .bid-sub { font-size: 9px; }
+  .bid-hand-strip { max-height: 100px; }
+  .bid-grid {
+    grid-template-columns: repeat(auto-fill, minmax(42px, 1fr));
+    gap: 6px;
+    padding: 10px 12px;
+  }
+  .bid-tile { font-size: 16px; }
+}

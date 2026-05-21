@@ -181,7 +181,7 @@ export default function Lobby({ socket, myId, roomId, gameState, showToast }) {
             <div className="lobby-info-strip">
               <div className="info-item">
                 <span className="info-icon">👥</span>
-                <span>2–7 players</span>
+                <span>2+ players</span>
               </div>
               <div className="info-item">
                 <span className="info-icon">🃏</span>
@@ -212,7 +212,7 @@ export default function Lobby({ socket, myId, roomId, gameState, showToast }) {
             <div className="player-list-wrap">
               <div className="player-list-header">
                 <span className="player-list-title">Players</span>
-                <span className="player-count-badge">{players.length} / 7</span>
+                <span className="player-count-badge">{players.length} joined</span>
               </div>
 
               <div className="player-list">
@@ -229,16 +229,21 @@ export default function Lobby({ socket, myId, roomId, gameState, showToast }) {
                       <span className="host-badge">👑 Host</span>
                     )}
                     {p.id === myId && <span className="you-badge">You</span>}
+                    {isHost && p.id !== myId && (
+                      <button
+                        className="player-chip-kick"
+                        title={`Remove ${p.name}`}
+                        onClick={() => socket.emit('kickPlayer', { roomId, playerId: p.id })}
+                      >×</button>
+                    )}
                   </div>
                 ))}
 
-                {/* Empty slots */}
-                {players.length < 7 && (
-                  <div className="player-chip empty">
-                    <div className="player-avatar empty-avatar">+</div>
-                    <span className="player-chip-name">Waiting for player…</span>
-                  </div>
-                )}
+                {/* Always show the "waiting" slot so the host knows more can join */}
+                <div className="player-chip empty">
+                  <div className="player-avatar empty-avatar">+</div>
+                  <span className="player-chip-name">Waiting for player…</span>
+                </div>
               </div>
             </div>
 

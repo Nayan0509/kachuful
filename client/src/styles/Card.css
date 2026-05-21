@@ -77,6 +77,46 @@
 }
 .card.small .card-suit-lg { font-size: 30px; }
 
+/* ════════════════════════════════════════════════════════════════════
+   RESPONSIVE — scale cards for tablet / phone / small phone
+   ════════════════════════════════════════════════════════════════════ */
+@media (max-width: 1024px) {
+  :root { --cw: 76px; --ch: 106px; }
+  .card.small { --cw: 52px; --ch: 74px; }
+  .card-rank { font-size: 18px; }
+  .card-suit-sm { font-size: 14px; }
+  .card-suit-lg { font-size: 40px; }
+  .card.small .card-rank { font-size: 13px; }
+  .card.small .card-suit-sm { font-size: 11px; }
+  .card.small .card-suit-lg { font-size: 26px; }
+}
+
+@media (max-width: 768px) {
+  :root { --cw: 64px; --ch: 90px; }
+  .card.small { --cw: 44px; --ch: 62px; }
+  .card { border-radius: 8px; border-width: 1.25px; }
+  .card-rank { font-size: 16px; }
+  .card-suit-sm { font-size: 12px; }
+  .card-suit-lg { font-size: 32px; }
+  .card.small .card-rank { font-size: 11px; }
+  .card.small .card-suit-sm { font-size: 9px; }
+  .card.small .card-suit-lg { font-size: 22px; }
+  .card-corner.top-left    { top: 3px; left: 4px; }
+  .card-corner.bottom-right{ bottom: 3px; right: 4px; }
+}
+
+@media (max-width: 480px) {
+  :root { --cw: 54px; --ch: 76px; }
+  .card.small { --cw: 38px; --ch: 54px; }
+  .card { border-radius: 7px; }
+  .card-rank { font-size: 14px; }
+  .card-suit-sm { font-size: 10px; }
+  .card-suit-lg { font-size: 26px; }
+  .card.small .card-rank { font-size: 10px; }
+  .card.small .card-suit-sm { font-size: 8px; }
+  .card.small .card-suit-lg { font-size: 18px; }
+}
+
 /* ── Clickable / hover ── */
 .card.clickable { cursor: pointer; }
 .card.clickable:hover {
